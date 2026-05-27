@@ -31,19 +31,32 @@ export async function importExternalFund(code, { syncNav = true } = {}) {
     updateAt: match.navDate || "待同步"
   });
 
-  let syncedRecords = 0;
-  if (syncNav) {
-    const records = await fetchNavHistory(match.code, { pages: 1, pageSize: 90 });
-    upsertNavHistory(match.code, records);
-    updateFundNavSnapshot(match.code, records.at(-1));
-    recordSyncRun("eastmoney", `fund_import:${match.code}`, "success", `${records.length} records synced`);
-    syncedRecords = records.length;
-  }
+  const syncResult = syncNav ? await syncFundNav(match.code, { targetPrefix: "fund_import" }) : { syncedRecords: 0 };
 
   return {
     ...getFundRecord(match.code),
-    syncedRecords
+    syncedRecords: syncResult.syncedRecords
   };
+}
+
+export async function syncFundNav(code, { pages = 1, pageSize = 90, targetPrefix = "fund_nav_history" } = {}) {
+  if (!getFundRecord(code)) throw new Error(`Fund not found: ${code}`);
+  try {
+    const records = await fetchNavHistory(code, { pages, pageSize });
+    upsertNavHistory(code, records);
+    updateFundNavSnapshot(code, records.at(-1));
+    recordSyncRun("eastmoney", `${targetPrefix}:${code}`, "success", `${records.length} records synced`);
+    return {
+      code,
+      source: "eastmoney",
+      syncedRecords: records.length,
+      latestNavDate: records.at(-1)?.navDate || "",
+      latestUnitNav: records.at(-1)?.unitNav || null
+    };
+  } catch (error) {
+    recordSyncRun("eastmoney", `${targetPrefix}:${code}`, "failed", error.message);
+    throw error;
+  }
 }
 
 function normalizeCategory(category) {

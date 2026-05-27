@@ -56,6 +56,7 @@ http://127.0.0.1:4173
 - `/api/funds/:code/sectors`
 - `/api/funds/:code/peers`
 - `/api/funds/:code/sync-status`
+- `/api/funds/:code/sync-nav`
 - `/api/funds/:code/reports`
 - `/api/funds/:code/insight`
 - `/api/funds/:code/alerts`

@@ -13,7 +13,7 @@ import {
   listWatchlist,
   updateWatchlist
 } from "../services/fundAnalytics.mjs";
-import { importExternalFund, searchExternalFunds } from "../services/fundImportService.mjs";
+import { importExternalFund, searchExternalFunds, syncFundNav } from "../services/fundImportService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
 export function createApiRouter() {
@@ -51,8 +51,13 @@ export function createApiRouter() {
     }
 
     const fundMatch = path.match(/^\/api\/funds\/([^/]+)\/([^/]+)$/);
-    if (req.method === "GET" && fundMatch) {
+    if (fundMatch) {
       const [, code, resource] = fundMatch;
+      if (req.method === "POST" && resource === "sync-nav") {
+        const body = await readJson(req);
+        return json(res, await syncFundNav(code, { pages: Number(body.pages || 1), pageSize: Number(body.pageSize || 90) }));
+      }
+      if (req.method !== "GET") return notFound(res);
       if (resource === "trend") return json(res, buildTrend(code, url.searchParams.get("range") || "1m"));
       if (resource === "holdings") return json(res, buildHoldings(code));
       if (resource === "holding-changes") return json(res, buildHoldingChanges(code));

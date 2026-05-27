@@ -198,6 +198,8 @@ function renderSyncStatus(status) {
   $("#syncLatestDate").textContent = status.latestNavDate || "暂无";
   $("#syncMessage").textContent = status.message;
   $("#syncMessage").className = `sync-message ${status.status}`;
+  $("#syncNowButton").disabled = false;
+  $("#syncNowButton").textContent = status.status === "pending" ? "同步净值" : "刷新净值";
 }
 
 function renderPeers(peerData) {
@@ -397,6 +399,29 @@ async function importFund(code) {
   await loadFund(fund.code);
 }
 
+async function syncCurrentFundNav() {
+  if (!state.selectedCode) return;
+  const button = $("#syncNowButton");
+  button.disabled = true;
+  button.textContent = "同步中";
+  $("#chartStatus").textContent = "同步中";
+  try {
+    await fetchJson(`/api/funds/${state.selectedCode}/sync-nav`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pages: 1, pageSize: 90 })
+    });
+    await loadFunds();
+    await loadFund(state.selectedCode);
+  } catch (error) {
+    $("#syncMessage").textContent = "同步失败，请稍后重试。";
+    $("#syncMessage").className = "sync-message stale";
+    button.disabled = false;
+    button.textContent = "重试同步";
+    console.error(error);
+  }
+}
+
 fundList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-code]");
   if (button) loadFund(button.dataset.code);
@@ -415,6 +440,7 @@ $("#fundSearch").addEventListener("input", async (event) => {
 });
 
 $("#watchToggle").addEventListener("click", toggleWatchlist);
+$("#syncNowButton").addEventListener("click", syncCurrentFundNav);
 
 document.querySelectorAll(".list-mode").forEach((button) => {
   button.addEventListener("click", () => {
