@@ -13,7 +13,7 @@ import {
   listWatchlist,
   updateWatchlist
 } from "../services/fundAnalytics.mjs";
-import { importExternalFund, searchExternalFunds, syncFundNav } from "../services/fundImportService.mjs";
+import { importExternalFund, listRecentSyncRuns, searchExternalFunds, syncFundNav, syncWatchlistNav } from "../services/fundImportService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
 export function createApiRouter() {
@@ -27,6 +27,10 @@ export function createApiRouter() {
       return json(res, listFunds(url.searchParams.get("q") || ""));
     }
 
+    if (req.method === "GET" && path === "/api/sync-runs") {
+      return json(res, listRecentSyncRuns(Number(url.searchParams.get("limit") || 12)));
+    }
+
     if (req.method === "GET" && path === "/api/fund-search") {
       return json(res, await searchExternalFunds(url.searchParams.get("q") || "", Number(url.searchParams.get("limit") || 8)));
     }
@@ -38,6 +42,11 @@ export function createApiRouter() {
 
     if (req.method === "GET" && path === "/api/watchlists") {
       return json(res, listWatchlist());
+    }
+
+    if (req.method === "POST" && path === "/api/watchlists/sync-nav") {
+      const body = await readJson(req);
+      return json(res, await syncWatchlistNav({ pages: Number(body.pages || 1), pageSize: Number(body.pageSize || 90) }));
     }
 
     if (req.method === "POST" && path === "/api/watchlists") {

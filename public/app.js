@@ -202,6 +202,29 @@ function renderSyncStatus(status) {
   $("#syncNowButton").textContent = status.status === "pending" ? "同步净值" : "刷新净值";
 }
 
+function renderSyncRuns(runs) {
+  $("#syncTaskSummary").textContent = runs.length ? `最近 ${runs.length} 条同步记录` : "暂无同步记录";
+  $("#syncRunList").innerHTML = runs.length
+    ? runs
+        .map(
+          (run) => `
+            <article class="sync-run ${run.status}">
+              <div>
+                <strong>${run.fundName}</strong>
+                <span>${run.target} · ${run.source}</span>
+              </div>
+              <div>
+                <b>${run.status === "success" ? "成功" : "失败"}</b>
+                <span>${run.message}</span>
+                <small>${run.syncedAt}</small>
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">暂无同步记录</div>`;
+}
+
 function renderPeers(peerData) {
   $("#peerRank").textContent = `第 ${peerData.selectedRank}/${peerData.peerCount}`;
   $("#peerMeta").textContent = `对比基准 ${peerData.benchmark} · 综合评分由季度收益、回撤、波动和行业相似度估算`;
@@ -334,6 +357,11 @@ async function loadExternalSearch() {
   renderExternalResults();
 }
 
+async function loadSyncRuns() {
+  const runs = await fetchJson("/api/sync-runs?limit=8");
+  renderSyncRuns(runs);
+}
+
 async function loadFund(code = state.selectedCode) {
   state.selectedCode = code;
   renderFundList();
@@ -413,12 +441,37 @@ async function syncCurrentFundNav() {
     });
     await loadFunds();
     await loadFund(state.selectedCode);
+    await loadSyncRuns();
   } catch (error) {
     $("#syncMessage").textContent = "同步失败，请稍后重试。";
     $("#syncMessage").className = "sync-message stale";
     button.disabled = false;
     button.textContent = "重试同步";
     console.error(error);
+  }
+}
+
+async function syncWatchlistNav() {
+  const button = $("#syncWatchlistButton");
+  button.disabled = true;
+  button.textContent = "同步中";
+  $("#syncTaskSummary").textContent = "正在同步全部自选基金";
+  try {
+    const result = await fetchJson("/api/watchlists/sync-nav", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pages: 1, pageSize: 90 })
+    });
+    $("#syncTaskSummary").textContent = `自选同步完成：成功 ${result.success}，失败 ${result.failed}`;
+    await loadFunds();
+    await loadFund(state.selectedCode);
+    await loadSyncRuns();
+  } catch (error) {
+    $("#syncTaskSummary").textContent = "自选同步失败，请稍后重试。";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "同步全部自选";
   }
 }
 
@@ -441,6 +494,7 @@ $("#fundSearch").addEventListener("input", async (event) => {
 
 $("#watchToggle").addEventListener("click", toggleWatchlist);
 $("#syncNowButton").addEventListener("click", syncCurrentFundNav);
+$("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
 
 document.querySelectorAll(".list-mode").forEach((button) => {
   button.addEventListener("click", () => {
@@ -465,6 +519,7 @@ window.addEventListener("resize", drawChart);
 async function boot() {
   await loadFunds();
   await loadFund(state.selectedCode);
+  await loadSyncRuns();
   setInterval(refreshRealtime, 3000);
 }
 

@@ -61,6 +61,8 @@ http://127.0.0.1:4173
 - `/api/funds/:code/insight`
 - `/api/funds/:code/alerts`
 - `/api/watchlists`
+- `/api/watchlists/sync-nav`
+- `/api/sync-runs`
 - `/api/alerts`
 
 后续可以把文件中的模拟数据替换为：

@@ -271,6 +271,21 @@ export function recordSyncRun(source, target, status, message) {
   getDb().prepare("INSERT INTO sync_runs (source, target, status, message) VALUES (?, ?, ?, ?)").run(source, target, status, message);
 }
 
+export function listSyncRuns(limit = 12) {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        id, source, target, status, message,
+        synced_at AS syncedAt
+      FROM sync_runs
+      ORDER BY synced_at DESC, id DESC
+      LIMIT ?
+    `
+    )
+    .all(limit);
+}
+
 export function listAlertRules() {
   return getDb()
     .prepare(

@@ -493,6 +493,50 @@ button {
   cursor: wait;
 }
 
+.task-panel .section-head {
+  align-items: center;
+}
+
+.sync-run-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sync-run {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--teal);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sync-run.failed {
+  border-left-color: var(--red);
+}
+
+.sync-run strong,
+.sync-run b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.sync-run span,
+.sync-run small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sync-run > div:last-child {
+  text-align: right;
+}
+
 .grid-two {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
@@ -840,12 +884,14 @@ th:first-child {
   }
 
   .peer-row,
-  .change-row {
+  .change-row,
+  .sync-run {
     grid-template-columns: 1fr;
   }
 
   .peer-metrics,
-  .change-weight {
+  .change-weight,
+  .sync-run > div:last-child {
     text-align: left;
   }
 }
