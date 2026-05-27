@@ -12,6 +12,7 @@ import {
   listWatchlist,
   updateWatchlist
 } from "../services/fundAnalytics.mjs";
+import { importExternalFund, searchExternalFunds } from "../services/fundImportService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
 export function createApiRouter() {
@@ -23,6 +24,15 @@ export function createApiRouter() {
 
     if (req.method === "GET" && path === "/api/funds") {
       return json(res, listFunds(url.searchParams.get("q") || ""));
+    }
+
+    if (req.method === "GET" && path === "/api/fund-search") {
+      return json(res, await searchExternalFunds(url.searchParams.get("q") || "", Number(url.searchParams.get("limit") || 8)));
+    }
+
+    if (req.method === "POST" && path === "/api/funds/import") {
+      const body = await readJson(req);
+      return json(res, await importExternalFund(String(body.code || ""), { syncNav: body.syncNav !== false }));
     }
 
     if (req.method === "GET" && path === "/api/watchlists") {

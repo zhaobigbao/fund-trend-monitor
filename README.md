@@ -22,6 +22,7 @@ http://127.0.0.1:4173
 
 - 基金列表与实时估值刷新
 - 基金搜索与自选过滤
+- 外部基金搜索与导入本地基金池
 - 1周、1月、3月净值走势图
 - 上季度重仓股、披露日期、板块、赛道、阶段表现
 - 同类基金收益、回撤、波动和综合评分对比
@@ -44,8 +45,10 @@ http://127.0.0.1:4173
 
 `server.mjs` 里已经按业务资源拆分接口：
 
+- `/api/fund-search?q=关键词`
 - `/api/funds`
 - `/api/funds?q=关键词`
+- `/api/funds/import`
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
 - `/api/funds/:code/holding-changes`

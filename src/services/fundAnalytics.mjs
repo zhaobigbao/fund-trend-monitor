@@ -97,6 +97,17 @@ export function buildRealtime(code) {
 export function buildHoldings(code) {
   const fund = getFund(code);
   const disclosure = getHoldingDisclosure(fund.code);
+  if (!disclosure) {
+    return {
+      fundCode: fund.code,
+      quarter: "暂无持仓",
+      disclosureDate: "暂无披露",
+      source: "尚未同步季报持仓",
+      rows: [],
+      concentrationTop3: 0,
+      concentrationTop10: 0
+    };
+  }
   const rows = listHoldingRows(fund.code, disclosure.quarter);
 
   return {
@@ -290,6 +301,21 @@ export function buildInsight(code) {
   const fund = getFund(code);
   const holdings = buildHoldings(code);
   const holdingsList = holdings.rows;
+  if (!holdingsList.length) {
+    return {
+      headline: `${fund.name}已导入基金池，当前主要可观察净值走势，持仓与研报仍待同步。`,
+      confidence: 45,
+      generatedAt: formatGeneratedAt(),
+      dataScope: "历史净值、基础基金信息",
+      bullets: [
+        "当前没有季报持仓数据，暂不生成行业暴露和持仓结构判断。",
+        "可以先用净值趋势观察阶段强弱，等待后续同步持仓和标签数据。",
+        "AI 结论置信度较低，因为证据链还不完整。"
+      ],
+      actions: ["优先同步历史净值并观察回撤区间。", "后续补充季报持仓后，再启用行业、赛道和研报分析。", "在持仓数据缺失前，不做同类风格归因判断。"],
+      evidence: [`基金基础信息来源：${fund.updateAt}`, "持仓数据：尚未同步", "研报观点样本：尚未匹配"]
+    };
+  }
   const positive = holdingsList.filter((item) => item.change > 0).length;
   const reportList = buildReports(code);
   const alerts = buildAlerts(code).filter((alert) => alert.level !== "low");
@@ -297,14 +323,7 @@ export function buildInsight(code) {
   return {
     headline: `${fund.name}当前趋势偏${fund.dailyChange >= 0 ? "强" : "震荡"}，核心观察点在${topSector.sector}配置延续性`,
     confidence: fund.dailyChange >= 0 ? 78 : 64,
-    generatedAt: new Intl.DateTimeFormat("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "Asia/Shanghai"
-    }).format(new Date()),
+    generatedAt: formatGeneratedAt(),
     dataScope: `${holdings.quarter} 持仓、盘中估值、${reportList.length} 条赛道研报摘要`,
     bullets: [
       `前十大持仓中有${positive}只近阶段表现为正，组合动量处在${positive >= 4 ? "改善" : "分化"}状态。`,
@@ -347,6 +366,17 @@ function trendLimitForRange(range) {
   if (range === "1w") return 7;
   if (range === "3m") return 90;
   return 30;
+}
+
+function formatGeneratedAt() {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Shanghai"
+  }).format(new Date());
 }
 
 function scoreFund(fund, sameTopSector) {

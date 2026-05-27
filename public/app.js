@@ -4,7 +4,9 @@ const state = {
   range: "1m",
   trend: [],
   search: "",
-  listMode: "all"
+  listMode: "all",
+  externalResults: [],
+  searchTimer: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -53,6 +55,29 @@ function renderFundList() {
         })
         .join("")
     : `<div class="empty-state">没有匹配的基金</div>`;
+}
+
+function renderExternalResults() {
+  const panel = $("#externalSearchPanel");
+  const results = $("#externalResults");
+  panel.hidden = state.search.trim().length < 2;
+  if (panel.hidden) return;
+
+  results.innerHTML = state.externalResults.length
+    ? state.externalResults
+        .map(
+          (fund) => `
+            <article class="external-result">
+              <div>
+                <strong>${fund.name}</strong>
+                <span>${fund.code} · ${fund.navDate || "暂无日期"} · ${fund.source}</span>
+              </div>
+              <button data-import-code="${fund.code}" ${fund.imported ? "disabled" : ""}>${fund.imported ? "已导入" : "导入"}</button>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">暂无外部结果</div>`;
 }
 
 function renderMetrics(fund, realtime) {
@@ -149,7 +174,8 @@ function renderHoldings(holdingData) {
   $("#holdingQuarter").textContent = holdingData.quarter;
   $("#holdingMeta").textContent = `披露日期 ${holdingData.disclosureDate} · ${holdingData.source}`;
   $("#holdingSummary").textContent = `前三重仓 ${holdingData.concentrationTop3.toFixed(2)}% · 当前展示持仓合计 ${holdingData.concentrationTop10.toFixed(2)}%`;
-  $("#holdingRows").innerHTML = holdingData.rows
+  $("#holdingRows").innerHTML = holdingData.rows.length
+    ? holdingData.rows
     .map(
       (row) => `
         <tr>
@@ -161,7 +187,8 @@ function renderHoldings(holdingData) {
         </tr>
       `
     )
-    .join("");
+    .join("")
+    : `<tr><td colspan="5" class="table-empty">暂无持仓数据</td></tr>`;
 }
 
 function renderPeers(peerData) {
@@ -190,7 +217,8 @@ function renderPeers(peerData) {
 function renderHoldingChanges(changeData) {
   $("#changeQuarter").textContent = `${changeData.previousQuarter} → ${changeData.quarter}`;
   $("#changeSummary").textContent = `增持 ${changeData.summary.increaseWeight.toFixed(2)}% · 减持 ${changeData.summary.decreaseWeight.toFixed(2)}% · 新进 ${changeData.summary.newCount} · 退出 ${changeData.summary.exitCount}`;
-  $("#holdingChangeRows").innerHTML = changeData.rows
+  $("#holdingChangeRows").innerHTML = changeData.rows.length
+    ? changeData.rows
     .slice(0, 6)
     .map(
       (row) => `
@@ -206,10 +234,15 @@ function renderHoldingChanges(changeData) {
         </article>
       `
     )
-    .join("");
+    .join("")
+    : `<div class="empty-state">暂无季度持仓变化</div>`;
 }
 
 function renderSectors(sectors) {
+  if (!sectors.length) {
+    $("#sectorBars").innerHTML = `<div class="empty-state">暂无行业暴露数据</div>`;
+    return;
+  }
   const max = Math.max(...sectors.map((item) => item.weight), 1);
   $("#sectorBars").innerHTML = sectors
     .map(
@@ -225,7 +258,8 @@ function renderSectors(sectors) {
 }
 
 function renderReports(reports) {
-  $("#reportList").innerHTML = reports
+  $("#reportList").innerHTML = reports.length
+    ? reports
     .map(
       (report) => `
         <article class="report-card">
@@ -236,7 +270,8 @@ function renderReports(reports) {
         </article>
       `
     )
-    .join("");
+    .join("")
+    : `<div class="empty-state">暂无匹配研报</div>`;
 }
 
 function renderAlerts(alerts) {
@@ -267,6 +302,25 @@ async function loadFunds() {
   state.funds = await fetchJson(`/api/funds${query}`);
   if (!state.selectedCode && state.funds.length) state.selectedCode = state.funds[0].code;
   renderFundList();
+}
+
+async function loadExternalSearch() {
+  const keyword = state.search.trim();
+  if (keyword.length < 2) {
+    state.externalResults = [];
+    renderExternalResults();
+    return;
+  }
+
+  $("#externalStatus").textContent = "搜索中";
+  try {
+    state.externalResults = await fetchJson(`/api/fund-search?q=${encodeURIComponent(keyword)}`);
+    $("#externalStatus").textContent = `${state.externalResults.length} 条结果`;
+  } catch {
+    state.externalResults = [];
+    $("#externalStatus").textContent = "搜索失败";
+  }
+  renderExternalResults();
 }
 
 async function loadFund(code = state.selectedCode) {
@@ -319,14 +373,34 @@ async function toggleWatchlist() {
   await loadFund(state.selectedCode);
 }
 
+async function importFund(code) {
+  $("#externalStatus").textContent = "导入中";
+  const fund = await fetchJson("/api/funds/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, syncNav: true })
+  });
+  state.selectedCode = fund.code;
+  await loadFunds();
+  await loadExternalSearch();
+  await loadFund(fund.code);
+}
+
 fundList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-code]");
   if (button) loadFund(button.dataset.code);
 });
 
+$("#externalResults").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-import-code]");
+  if (button) importFund(button.dataset.importCode);
+});
+
 $("#fundSearch").addEventListener("input", async (event) => {
   state.search = event.target.value;
   await loadFunds();
+  clearTimeout(state.searchTimer);
+  state.searchTimer = setTimeout(loadExternalSearch, 350);
 });
 
 $("#watchToggle").addEventListener("click", toggleWatchlist);

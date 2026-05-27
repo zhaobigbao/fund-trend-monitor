@@ -36,6 +36,41 @@ export function getFundRecord(code) {
     .get(code);
 }
 
+export function upsertFundRecord(fund) {
+  getDb()
+    .prepare(
+      `
+      INSERT INTO funds (
+        code, name, manager, category, risk, nav, daily_change,
+        quarterly_return, max_drawdown, volatility, size, benchmark, update_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(code) DO UPDATE SET
+        name = excluded.name,
+        manager = excluded.manager,
+        category = excluded.category,
+        risk = excluded.risk,
+        nav = excluded.nav,
+        daily_change = excluded.daily_change,
+        update_at = excluded.update_at
+    `
+    )
+    .run(
+      fund.code,
+      fund.name,
+      fund.manager,
+      fund.category,
+      fund.risk,
+      fund.nav,
+      fund.dailyChange,
+      fund.quarterlyReturn,
+      fund.maxDrawdown,
+      fund.volatility,
+      fund.size,
+      fund.benchmark,
+      fund.updateAt
+    );
+}
+
 export function listWatchlistCodes() {
   return new Set(getDb().prepare("SELECT fund_code AS code FROM watchlists ORDER BY created_at").all().map((row) => row.code));
 }

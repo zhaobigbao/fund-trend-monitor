@@ -139,8 +139,10 @@
 
 API 应围绕业务资源拆分：
 
+- `/api/fund-search?q=关键词`
 - `/api/funds`
 - `/api/funds?q=关键词`
+- `/api/funds/import`
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
 - `/api/funds/:code/holding-changes`
@@ -168,6 +170,7 @@ API 应围绕业务资源拆分：
 - `src/data/sqliteProvider.mjs`：SQLite 数据 Provider，负责向服务层提供基金、持仓、研报、自选和预警规则数据。
 - `src/dataSources/eastmoneyFundSource.mjs`：外部基金数据源适配器，负责基金搜索和历史净值拉取。
 - `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
+- `src/services/fundImportService.mjs`：基金导入服务，负责外部搜索结果入库和初始净值同步。
 - `src/storage/database.mjs`：本地数据库 schema、建表和种子导入。
 - `src/http/apiRouter.mjs`：API 层，负责业务资源路由。
 - `src/http/staticFiles.mjs`：静态资源服务。
@@ -202,6 +205,7 @@ API 应围绕业务资源拆分：
 
 - 外部数据源必须通过 `src/dataSources/` 下的适配器接入。
 - 同步脚本负责把外部数据写入 SQLite，前端和 API 不直接请求第三方接口。
+- 从外部搜索导入基金时，只写入基础信息和历史净值；持仓、行业和研报数据允许暂时为空。
 - 趋势接口优先使用 `fund_nav_history` 中的真实净值历史；没有同步数据时回退到模拟曲线。
 - 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
@@ -243,3 +247,4 @@ API 应围绕业务资源拆分：
 - 同类基金对比和持仓变化属于分析服务层能力，前端只展示 API 结果，不在页面中重新计算排名或调仓结论。
 - 运行时数据必须通过 Provider 读取；前端和分析服务不得直接读取 SQLite 文件或种子数据。
 - 外部数据源不得直接耦合到页面层；新增真实数据接入时应先写 data source adapter，再写同步脚本或后台任务。
+- 对于外部导入但尚未同步季报持仓的基金，分析服务必须返回稳定空状态，不允许因缺少持仓数据导致接口失败。
