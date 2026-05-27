@@ -161,16 +161,39 @@ API 应围绕业务资源拆分：
 
 ## 当前代码组织
 
-当前第一阶段采用轻量 Node.js 服务和原生前端，不引入框架依赖。
+当前第一阶段采用轻量 Node.js 服务、Node 内置 SQLite 和原生前端，不引入前端框架。
 
 - `server.mjs`：服务入口，只负责组合 API 路由和静态资源服务。
-- `src/data/mockData.mjs`：模拟数据适配层，后续替换真实数据源时优先从这里拆出 provider。
+- `src/data/mockData.mjs`：种子数据，用于初始化本地 SQLite，后续真实数据源接入后应逐步减少这里的业务数据。
+- `src/data/sqliteProvider.mjs`：SQLite 数据 Provider，负责向服务层提供基金、持仓、研报、自选和预警规则数据。
 - `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
+- `src/storage/database.mjs`：本地数据库 schema、建表和种子导入。
 - `src/http/apiRouter.mjs`：API 层，负责业务资源路由。
 - `src/http/staticFiles.mjs`：静态资源服务。
+- `scripts/init-db.mjs`：数据库初始化脚本。
 - `public/`：前端展示层。
 
 后续如果引入数据库、任务队列或模型服务，应优先新增 provider/service，不要把实现塞回前端页面或入口文件。
+
+## 数据底座
+
+当前本地数据库文件为 `data/fund-radar.sqlite`，属于运行时数据，不提交到 Git。
+
+数据库启动策略：
+
+- 应用启动时自动建表。
+- 如果数据库为空，会从 `src/data/mockData.mjs` 导入种子数据。
+- 可以通过 `npm run init-db` 手动初始化或校验数据库 schema。
+
+当前已落库：
+
+- 基金基础信息
+- 当前季度持仓
+- 上一季度持仓
+- 持仓披露信息
+- 研报摘要
+- 自选基金
+- 预警规则
 
 ## 数据模型规划
 
@@ -208,3 +231,4 @@ API 应围绕业务资源拆分：
 - 自选、预警、AI 结论这类状态或结果应通过 API 获取，避免只保存在前端临时状态里。
 - 持仓接口必须返回 `quarter`、`disclosureDate` 和 `source`，前端必须展示这些信息，避免误导用户把季报持仓当作实时持仓。
 - 同类基金对比和持仓变化属于分析服务层能力，前端只展示 API 结果，不在页面中重新计算排名或调仓结论。
+- 运行时数据必须通过 Provider 读取；前端和分析服务不得直接读取 SQLite 文件或种子数据。

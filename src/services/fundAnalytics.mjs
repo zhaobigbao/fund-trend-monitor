@@ -1,10 +1,19 @@
-import { funds, holdingDisclosures, holdingRows, initialWatchlist, previousHoldingRows, reports } from "../data/mockData.mjs";
-
-const watchlistCodes = new Set(initialWatchlist);
+import {
+  getFundRecord,
+  getHoldingDisclosure,
+  listAlertRules,
+  listFundRecords,
+  listHoldingRows,
+  listPreviousHoldingRows,
+  listReportsBySectors,
+  listWatchlistCodes,
+  setWatchlistCode
+} from "../data/sqliteProvider.mjs";
 
 export function listFunds(query = "") {
   const keyword = query.trim().toLowerCase();
-  return funds
+  const watchlistCodes = listWatchlistCodes();
+  return listFundRecords()
     .filter((fund) => {
       if (!keyword) return true;
       return [fund.code, fund.name, fund.manager, fund.category].some((value) => String(value).toLowerCase().includes(keyword));
@@ -17,7 +26,7 @@ export function listFunds(query = "") {
 }
 
 export function getFund(code) {
-  return funds.find((item) => item.code === code) || funds[0];
+  return getFundRecord(code) || listFundRecords()[0];
 }
 
 export function listWatchlist() {
@@ -25,11 +34,10 @@ export function listWatchlist() {
 }
 
 export function updateWatchlist(code, watched) {
-  const fund = funds.find((item) => item.code === code);
+  const fund = getFundRecord(code);
   if (!fund) return { code, watched: false, funds: listWatchlist(), error: "Fund not found" };
-  if (watched) watchlistCodes.add(fund.code);
-  else watchlistCodes.delete(fund.code);
-  return { code: fund.code, watched: watchlistCodes.has(fund.code), funds: listWatchlist() };
+  setWatchlistCode(fund.code, watched);
+  return { code: fund.code, watched: listWatchlistCodes().has(fund.code), funds: listWatchlist() };
 }
 
 export function seededNoise(seed, index) {
@@ -76,22 +84,12 @@ export function buildRealtime(code) {
 
 export function buildHoldings(code) {
   const fund = getFund(code);
-  const rows = (holdingRows[fund.code] || holdingRows["110022"]).map(
-    ([name, stockCode, weight, sector, track, change, note], index) => ({
-      rank: index + 1,
-      name,
-      stockCode,
-      weight,
-      sector,
-      track,
-      change,
-      note
-    })
-  );
+  const disclosure = getHoldingDisclosure(fund.code);
+  const rows = listHoldingRows(fund.code, disclosure.quarter);
 
   return {
     fundCode: fund.code,
-    ...holdingDisclosures[fund.code],
+    ...disclosure,
     rows,
     concentrationTop3: Number(rows.slice(0, 3).reduce((sum, item) => sum + item.weight, 0).toFixed(2)),
     concentrationTop10: Number(rows.reduce((sum, item) => sum + item.weight, 0).toFixed(2))
@@ -101,8 +99,8 @@ export function buildHoldings(code) {
 export function buildHoldingChanges(code) {
   const fund = getFund(code);
   const holdings = buildHoldings(fund.code);
-  const previousRows = previousHoldingRows[fund.code] || [];
-  const previousByCode = new Map(previousRows.map(([name, stockCode, weight]) => [stockCode, { name, stockCode, weight }]));
+  const previousRows = listPreviousHoldingRows(fund.code, previousQuarterOf(holdings.quarter));
+  const previousByCode = new Map(previousRows.map((row) => [row.stockCode, row]));
   const currentCodes = new Set(holdings.rows.map((row) => row.stockCode));
 
   const changedRows = holdings.rows.map((row) => {
@@ -118,15 +116,14 @@ export function buildHoldingChanges(code) {
   });
 
   for (const previous of previousRows) {
-    const [, stockCode, weight] = previous;
-    if (currentCodes.has(stockCode)) continue;
+    if (currentCodes.has(previous.stockCode)) continue;
     changedRows.push({
       rank: changedRows.length + 1,
-      name: previous[0],
-      stockCode,
+      name: previous.name,
+      stockCode: previous.stockCode,
       weight: 0,
-      previousWeight: weight,
-      delta: Number((0 - weight).toFixed(2)),
+      previousWeight: previous.weight,
+      delta: Number((0 - previous.weight).toFixed(2)),
       sector: "未知",
       track: "已退出",
       change: 0,
@@ -172,7 +169,7 @@ export function buildSectorExposure(code) {
 export function buildPeerComparison(code) {
   const fund = getFund(code);
   const selectedTopSector = buildSectorExposure(fund.code)[0]?.sector;
-  const rows = funds
+  const rows = listFundRecords()
     .filter((item) => item.code === fund.code || item.category === fund.category || item.risk === fund.risk)
     .map((item) => {
       const topSector = buildSectorExposure(item.code)[0];
@@ -207,17 +204,10 @@ export function buildPeerComparison(code) {
 
 export function buildReports(code) {
   const sectors = buildSectorExposure(code).map((item) => item.sector);
-  return sectors.flatMap((sector) =>
-    (reports[sector] || []).map(([title, source, summary, view]) => ({
-      sector,
-      title,
-      source,
-      summary,
-      view,
-      heat: Math.round(62 + seededNoise(sector.length, title.length) * 31),
-      updatedAt: "本周更新"
-    }))
-  );
+  return listReportsBySectors(sectors).map((report) => ({
+    ...report,
+    heat: Math.round(62 + seededNoise(report.sector.length, report.title.length) * 31)
+  }));
 }
 
 export function buildAlerts(code) {
@@ -226,8 +216,15 @@ export function buildAlerts(code) {
   const sectors = buildSectorExposure(code);
   const holdings = buildHoldings(code);
   const alerts = [];
+  const rules = listAlertRules();
+  const metrics = {
+    absRealtimeChange: Math.abs(realtime.change),
+    topSectorWeight: sectors[0]?.weight || 0,
+    concentrationTop3: holdings.concentrationTop3,
+    maxDrawdown: fund.maxDrawdown
+  };
 
-  if (Math.abs(realtime.change) >= 1.2) {
+  if (isRuleTriggered(rules.find((rule) => rule.metric === "absRealtimeChange"), metrics.absRealtimeChange)) {
     alerts.push({
       level: Math.abs(realtime.change) >= 1.8 ? "high" : "medium",
       title: "盘中波动放大",
@@ -236,7 +233,7 @@ export function buildAlerts(code) {
     });
   }
 
-  if (sectors[0]?.weight >= 35) {
+  if (isRuleTriggered(rules.find((rule) => rule.metric === "topSectorWeight"), metrics.topSectorWeight)) {
     alerts.push({
       level: "high",
       title: "行业集中度偏高",
@@ -245,7 +242,7 @@ export function buildAlerts(code) {
     });
   }
 
-  if (holdings.concentrationTop3 >= 30) {
+  if (isRuleTriggered(rules.find((rule) => rule.metric === "concentrationTop3"), metrics.concentrationTop3)) {
     alerts.push({
       level: "medium",
       title: "前三重仓影响较强",
@@ -254,7 +251,7 @@ export function buildAlerts(code) {
     });
   }
 
-  if (fund.maxDrawdown <= -15) {
+  if (isRuleTriggered(rules.find((rule) => rule.metric === "maxDrawdown"), metrics.maxDrawdown)) {
     alerts.push({
       level: "medium",
       title: "历史回撤较深",
@@ -340,4 +337,13 @@ function scoreFund(fund, sameTopSector) {
   const volatilityPenalty = fund.volatility * 1.2;
   const sectorBonus = sameTopSector ? 3 : 0;
   return Math.round(Math.max(0, returnScore + drawdownScore - volatilityPenalty + sectorBonus));
+}
+
+function isRuleTriggered(rule, value) {
+  if (!rule) return false;
+  if (rule.operator === ">=") return value >= rule.threshold;
+  if (rule.operator === "<=") return value <= rule.threshold;
+  if (rule.operator === ">") return value > rule.threshold;
+  if (rule.operator === "<") return value < rule.threshold;
+  return false;
 }
