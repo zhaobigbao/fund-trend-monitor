@@ -106,6 +106,87 @@ export function listReportsBySectors(sectors) {
     .all(...sectors);
 }
 
+export function listNavHistory(code, limit = 60) {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        fund_code AS fundCode,
+        nav_date AS navDate,
+        unit_nav AS unitNav,
+        accumulated_nav AS accumulatedNav,
+        daily_growth AS dailyGrowth,
+        subscription_status AS subscriptionStatus,
+        redemption_status AS redemptionStatus,
+        source,
+        synced_at AS syncedAt
+      FROM fund_nav_history
+      WHERE fund_code = ?
+      ORDER BY nav_date DESC
+      LIMIT ?
+    `
+    )
+    .all(code, limit)
+    .reverse();
+}
+
+export function upsertNavHistory(code, records) {
+  const database = getDb();
+  const statement = database.prepare(
+    `
+    INSERT INTO fund_nav_history (
+      fund_code, nav_date, unit_nav, accumulated_nav, daily_growth,
+      subscription_status, redemption_status, source, synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(fund_code, nav_date) DO UPDATE SET
+      unit_nav = excluded.unit_nav,
+      accumulated_nav = excluded.accumulated_nav,
+      daily_growth = excluded.daily_growth,
+      subscription_status = excluded.subscription_status,
+      redemption_status = excluded.redemption_status,
+      source = excluded.source,
+      synced_at = CURRENT_TIMESTAMP
+  `
+  );
+
+  database.exec("BEGIN");
+  try {
+    for (const record of records) {
+      statement.run(
+        code,
+        record.navDate,
+        record.unitNav,
+        record.accumulatedNav,
+        record.dailyGrowth,
+        record.subscriptionStatus,
+        record.redemptionStatus,
+        record.source
+      );
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function updateFundNavSnapshot(code, record) {
+  if (!record) return;
+  getDb()
+    .prepare(
+      `
+      UPDATE funds
+      SET nav = ?, daily_change = ?, update_at = ?
+      WHERE code = ?
+    `
+    )
+    .run(record.unitNav, record.dailyGrowth || 0, record.navDate, code);
+}
+
+export function recordSyncRun(source, target, status, message) {
+  getDb().prepare("INSERT INTO sync_runs (source, target, status, message) VALUES (?, ?, ?, ?)").run(source, target, status, message);
+}
+
 export function listAlertRules() {
   return getDb()
     .prepare(

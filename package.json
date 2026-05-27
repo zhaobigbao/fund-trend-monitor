@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node --no-warnings server.mjs",
-    "init-db": "node --no-warnings scripts/init-db.mjs"
+    "init-db": "node --no-warnings scripts/init-db.mjs",
+    "sync:funds": "node --no-warnings scripts/sync-fund-data.mjs"
   }
 }

@@ -4,6 +4,7 @@ import {
   listAlertRules,
   listFundRecords,
   listHoldingRows,
+  listNavHistory,
   listPreviousHoldingRows,
   listReportsBySectors,
   listWatchlistCodes,
@@ -47,6 +48,17 @@ export function seededNoise(seed, index) {
 
 export function buildTrend(code, range = "1m") {
   const fund = getFund(code);
+  const historicalRows = listNavHistory(fund.code, trendLimitForRange(range));
+  if (historicalRows.length >= 2) {
+    return historicalRows.map((row) => ({
+      label: row.navDate.slice(5),
+      value: row.unitNav,
+      date: row.navDate,
+      source: row.source,
+      dailyGrowth: row.dailyGrowth
+    }));
+  }
+
   const points = range === "1w" ? 32 : range === "3m" ? 78 : 56;
   const seed = Number(code.slice(-3));
   let value = fund.nav * (range === "3m" ? 0.94 : range === "1w" ? 0.985 : 0.965);
@@ -329,6 +341,12 @@ function previousQuarterOf(quarter) {
   const year = Number(match[1]);
   const q = Number(match[2]);
   return q === 1 ? `${year - 1}Q4` : `${year}Q${q - 1}`;
+}
+
+function trendLimitForRange(range) {
+  if (range === "1w") return 7;
+  if (range === "3m") return 90;
+  return 30;
 }
 
 function scoreFund(fund, sameTopSector) {

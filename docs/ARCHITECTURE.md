@@ -166,11 +166,13 @@ API 应围绕业务资源拆分：
 - `server.mjs`：服务入口，只负责组合 API 路由和静态资源服务。
 - `src/data/mockData.mjs`：种子数据，用于初始化本地 SQLite，后续真实数据源接入后应逐步减少这里的业务数据。
 - `src/data/sqliteProvider.mjs`：SQLite 数据 Provider，负责向服务层提供基金、持仓、研报、自选和预警规则数据。
+- `src/dataSources/eastmoneyFundSource.mjs`：外部基金数据源适配器，负责基金搜索和历史净值拉取。
 - `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
 - `src/storage/database.mjs`：本地数据库 schema、建表和种子导入。
 - `src/http/apiRouter.mjs`：API 层，负责业务资源路由。
 - `src/http/staticFiles.mjs`：静态资源服务。
 - `scripts/init-db.mjs`：数据库初始化脚本。
+- `scripts/sync-fund-data.mjs`：基金基础数据同步脚本，将外部历史净值写入 SQLite。
 - `public/`：前端展示层。
 
 后续如果引入数据库、任务队列或模型服务，应优先新增 provider/service，不要把实现塞回前端页面或入口文件。
@@ -194,6 +196,14 @@ API 应围绕业务资源拆分：
 - 研报摘要
 - 自选基金
 - 预警规则
+- 历史净值
+
+外部数据接入策略：
+
+- 外部数据源必须通过 `src/dataSources/` 下的适配器接入。
+- 同步脚本负责把外部数据写入 SQLite，前端和 API 不直接请求第三方接口。
+- 趋势接口优先使用 `fund_nav_history` 中的真实净值历史；没有同步数据时回退到模拟曲线。
+- 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
 ## 数据模型规划
 
@@ -232,3 +242,4 @@ API 应围绕业务资源拆分：
 - 持仓接口必须返回 `quarter`、`disclosureDate` 和 `source`，前端必须展示这些信息，避免误导用户把季报持仓当作实时持仓。
 - 同类基金对比和持仓变化属于分析服务层能力，前端只展示 API 结果，不在页面中重新计算排名或调仓结论。
 - 运行时数据必须通过 Provider 读取；前端和分析服务不得直接读取 SQLite 文件或种子数据。
+- 外部数据源不得直接耦合到页面层；新增真实数据接入时应先写 data source adapter，再写同步脚本或后台任务。

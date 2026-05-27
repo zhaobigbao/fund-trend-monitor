@@ -66,6 +66,19 @@ function createSchema(database) {
       PRIMARY KEY (fund_code, quarter, stock_code)
     );
 
+    CREATE TABLE IF NOT EXISTS fund_nav_history (
+      fund_code TEXT NOT NULL REFERENCES funds(code) ON DELETE CASCADE,
+      nav_date TEXT NOT NULL,
+      unit_nav REAL NOT NULL,
+      accumulated_nav REAL,
+      daily_growth REAL,
+      subscription_status TEXT,
+      redemption_status TEXT,
+      source TEXT NOT NULL,
+      synced_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (fund_code, nav_date)
+    );
+
     CREATE TABLE IF NOT EXISTS previous_fund_holdings (
       fund_code TEXT NOT NULL REFERENCES funds(code) ON DELETE CASCADE,
       quarter TEXT NOT NULL,
@@ -98,6 +111,15 @@ function createSchema(database) {
       threshold REAL NOT NULL,
       level TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      target TEXT NOT NULL,
+      status TEXT NOT NULL,
+      message TEXT NOT NULL,
+      synced_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
 }
