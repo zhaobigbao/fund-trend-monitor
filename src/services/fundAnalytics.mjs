@@ -1,4 +1,4 @@
-import { funds, holdingDisclosures, holdingRows, initialWatchlist, reports } from "../data/mockData.mjs";
+import { funds, holdingDisclosures, holdingRows, initialWatchlist, previousHoldingRows, reports } from "../data/mockData.mjs";
 
 const watchlistCodes = new Set(initialWatchlist);
 
@@ -98,6 +98,67 @@ export function buildHoldings(code) {
   };
 }
 
+export function buildHoldingChanges(code) {
+  const fund = getFund(code);
+  const holdings = buildHoldings(fund.code);
+  const previousRows = previousHoldingRows[fund.code] || [];
+  const previousByCode = new Map(previousRows.map(([name, stockCode, weight]) => [stockCode, { name, stockCode, weight }]));
+  const currentCodes = new Set(holdings.rows.map((row) => row.stockCode));
+
+  const changedRows = holdings.rows.map((row) => {
+    const previous = previousByCode.get(row.stockCode);
+    const previousWeight = previous?.weight || 0;
+    const delta = Number((row.weight - previousWeight).toFixed(2));
+    return {
+      ...row,
+      previousWeight,
+      delta,
+      changeType: previous ? classifyPositionChange(delta) : "新进"
+    };
+  });
+
+  for (const previous of previousRows) {
+    const [, stockCode, weight] = previous;
+    if (currentCodes.has(stockCode)) continue;
+    changedRows.push({
+      rank: changedRows.length + 1,
+      name: previous[0],
+      stockCode,
+      weight: 0,
+      previousWeight: weight,
+      delta: Number((0 - weight).toFixed(2)),
+      sector: "未知",
+      track: "已退出",
+      change: 0,
+      note: "本季度未进入当前展示持仓",
+      changeType: "退出"
+    });
+  }
+
+  const summary = changedRows.reduce(
+    (acc, row) => {
+      if (row.changeType === "新进") acc.newCount += 1;
+      if (row.changeType === "退出") acc.exitCount += 1;
+      if (row.delta > 0) acc.increaseWeight += row.delta;
+      if (row.delta < 0) acc.decreaseWeight += Math.abs(row.delta);
+      return acc;
+    },
+    { newCount: 0, exitCount: 0, increaseWeight: 0, decreaseWeight: 0 }
+  );
+
+  return {
+    fundCode: fund.code,
+    quarter: holdings.quarter,
+    previousQuarter: previousQuarterOf(holdings.quarter),
+    rows: changedRows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)),
+    summary: {
+      ...summary,
+      increaseWeight: Number(summary.increaseWeight.toFixed(2)),
+      decreaseWeight: Number(summary.decreaseWeight.toFixed(2))
+    }
+  };
+}
+
 export function buildSectorExposure(code) {
   const exposure = new Map();
   for (const item of buildHoldings(code).rows) {
@@ -106,6 +167,42 @@ export function buildSectorExposure(code) {
   return [...exposure.entries()]
     .map(([sector, weight]) => ({ sector, weight }))
     .sort((a, b) => b.weight - a.weight);
+}
+
+export function buildPeerComparison(code) {
+  const fund = getFund(code);
+  const selectedTopSector = buildSectorExposure(fund.code)[0]?.sector;
+  const rows = funds
+    .filter((item) => item.code === fund.code || item.category === fund.category || item.risk === fund.risk)
+    .map((item) => {
+      const topSector = buildSectorExposure(item.code)[0];
+      const score = scoreFund(item, topSector?.sector === selectedTopSector);
+      return {
+        code: item.code,
+        name: item.name,
+        manager: item.manager,
+        category: item.category,
+        risk: item.risk,
+        quarterlyReturn: item.quarterlyReturn,
+        maxDrawdown: item.maxDrawdown,
+        volatility: item.volatility,
+        topSector: topSector?.sector || "未知",
+        topSectorWeight: topSector?.weight || 0,
+        score,
+        selected: item.code === fund.code
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((item, index) => ({ ...item, rank: index + 1 }));
+
+  const selected = rows.find((item) => item.selected);
+  return {
+    fundCode: fund.code,
+    benchmark: fund.benchmark,
+    peerCount: rows.length,
+    selectedRank: selected?.rank || 0,
+    rows
+  };
 }
 
 export function buildReports(code) {
@@ -221,4 +318,26 @@ export function buildInsight(code) {
 function formatPercent(value) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
+}
+
+function classifyPositionChange(delta) {
+  if (delta >= 0.5) return "增持";
+  if (delta <= -0.5) return "减持";
+  return "稳定";
+}
+
+function previousQuarterOf(quarter) {
+  const match = quarter.match(/^(\d{4})Q([1-4])$/);
+  if (!match) return "上一季度";
+  const year = Number(match[1]);
+  const q = Number(match[2]);
+  return q === 1 ? `${year - 1}Q4` : `${year}Q${q - 1}`;
+}
+
+function scoreFund(fund, sameTopSector) {
+  const returnScore = fund.quarterlyReturn * 5;
+  const drawdownScore = 100 + fund.maxDrawdown * 3;
+  const volatilityPenalty = fund.volatility * 1.2;
+  const sectorBonus = sameTopSector ? 3 : 0;
+  return Math.round(Math.max(0, returnScore + drawdownScore - volatilityPenalty + sectorBonus));
 }

@@ -366,6 +366,10 @@ button {
   gap: 18px;
 }
 
+.research-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .lower {
   grid-template-columns: minmax(280px, 0.8fr) minmax(280px, 0.8fr) minmax(0, 1.2fr);
 }
@@ -432,6 +436,8 @@ th:first-child {
 .evidence-list,
 .report-list,
 .alert-list,
+.peer-list,
+.change-list,
 .sector-bars {
   display: grid;
   gap: 10px;
@@ -561,6 +567,77 @@ th:first-child {
   font-size: 11px;
 }
 
+.peer-row,
+.change-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.peer-row.selected {
+  border-color: #a8c0e8;
+  background: #f7faff;
+}
+
+.peer-row strong,
+.change-row strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.peer-row span,
+.change-row span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.peer-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(48px, auto));
+  gap: 8px;
+  align-items: center;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.peer-metrics b {
+  display: inline-flex;
+  width: 34px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #fff;
+  background: var(--ink);
+}
+
+.change-row {
+  border-left: 4px solid var(--teal);
+}
+
+.change-row.down {
+  border-left-color: var(--amber);
+}
+
+.change-weight {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.change-weight b {
+  font-size: 14px;
+}
+
 @media (max-width: 980px) {
   .shell {
     grid-template-columns: 1fr;
@@ -580,6 +657,7 @@ th:first-child {
 
   .metrics,
   .grid-two,
+  .research-row,
   .lower {
     grid-template-columns: 1fr;
   }
@@ -616,5 +694,15 @@ th:first-child {
 
   .sector-row {
     grid-template-columns: 78px minmax(0, 1fr) 48px;
+  }
+
+  .peer-row,
+  .change-row {
+    grid-template-columns: 1fr;
+  }
+
+  .peer-metrics,
+  .change-weight {
+    text-align: left;
   }
 }

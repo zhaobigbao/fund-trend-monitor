@@ -164,6 +164,51 @@ function renderHoldings(holdingData) {
     .join("");
 }
 
+function renderPeers(peerData) {
+  $("#peerRank").textContent = `第 ${peerData.selectedRank}/${peerData.peerCount}`;
+  $("#peerMeta").textContent = `对比基准 ${peerData.benchmark} · 综合评分由季度收益、回撤、波动和行业相似度估算`;
+  $("#peerRows").innerHTML = peerData.rows
+    .map(
+      (row) => `
+        <article class="peer-row ${row.selected ? "selected" : ""}">
+          <div>
+            <strong>${row.rank}. ${row.name}</strong>
+            <span>${row.code} · ${row.manager} · ${row.topSector} ${row.topSectorWeight.toFixed(1)}%</span>
+          </div>
+          <div class="peer-metrics">
+            <span class="${row.quarterlyReturn >= 0 ? "positive" : "negative"}">${formatPercent(row.quarterlyReturn)}</span>
+            <span class="negative">${formatPercent(row.maxDrawdown)}</span>
+            <span>${row.volatility.toFixed(1)}%</span>
+            <b>${row.score}</b>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderHoldingChanges(changeData) {
+  $("#changeQuarter").textContent = `${changeData.previousQuarter} → ${changeData.quarter}`;
+  $("#changeSummary").textContent = `增持 ${changeData.summary.increaseWeight.toFixed(2)}% · 减持 ${changeData.summary.decreaseWeight.toFixed(2)}% · 新进 ${changeData.summary.newCount} · 退出 ${changeData.summary.exitCount}`;
+  $("#holdingChangeRows").innerHTML = changeData.rows
+    .slice(0, 6)
+    .map(
+      (row) => `
+        <article class="change-row ${row.delta >= 0 ? "up" : "down"}">
+          <div>
+            <strong>${row.name}</strong>
+            <span>${row.stockCode} · ${row.changeType} · ${row.track}</span>
+          </div>
+          <div class="change-weight">
+            <span>${row.previousWeight.toFixed(2)}% → ${row.weight.toFixed(2)}%</span>
+            <b class="${row.delta >= 0 ? "positive" : "negative"}">${formatPercent(row.delta)}</b>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
 function renderSectors(sectors) {
   const max = Math.max(...sectors.map((item) => item.weight), 1);
   $("#sectorBars").innerHTML = sectors
@@ -230,10 +275,12 @@ async function loadFund(code = state.selectedCode) {
   $("#chartStatus").textContent = "同步中";
 
   const fund = state.funds.find((item) => item.code === code) || (await fetchJson(`/api/funds?q=${encodeURIComponent(code)}`))[0];
-  const [trend, realtime, holdings, sectors, reports, insight, alerts] = await Promise.all([
+  const [trend, realtime, holdings, peers, holdingChanges, sectors, reports, insight, alerts] = await Promise.all([
     fetchJson(`/api/funds/${code}/trend?range=${state.range}`),
     fetchJson(`/api/funds/${code}/realtime`),
     fetchJson(`/api/funds/${code}/holdings`),
+    fetchJson(`/api/funds/${code}/peers`),
+    fetchJson(`/api/funds/${code}/holding-changes`),
     fetchJson(`/api/funds/${code}/sectors`),
     fetchJson(`/api/funds/${code}/reports`),
     fetchJson(`/api/funds/${code}/insight`),
@@ -243,6 +290,8 @@ async function loadFund(code = state.selectedCode) {
   state.trend = trend;
   renderMetrics(fund, realtime);
   renderHoldings(holdings);
+  renderPeers(peers);
+  renderHoldingChanges(holdingChanges);
   renderSectors(sectors);
   renderReports(reports);
   renderInsight(insight);

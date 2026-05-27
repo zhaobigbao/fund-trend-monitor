@@ -143,7 +143,9 @@ API 应围绕业务资源拆分：
 - `/api/funds?q=关键词`
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
+- `/api/funds/:code/holding-changes`
 - `/api/funds/:code/sectors`
+- `/api/funds/:code/peers`
 - `/api/funds/:code/reports`
 - `/api/funds/:code/insight`
 - `/api/funds/:code/alerts`
@@ -163,7 +165,7 @@ API 应围绕业务资源拆分：
 
 - `server.mjs`：服务入口，只负责组合 API 路由和静态资源服务。
 - `src/data/mockData.mjs`：模拟数据适配层，后续替换真实数据源时优先从这里拆出 provider。
-- `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、板块暴露、研报聚合、AI 结论和预警规则。
+- `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
 - `src/http/apiRouter.mjs`：API 层，负责业务资源路由。
 - `src/http/staticFiles.mjs`：静态资源服务。
 - `public/`：前端展示层。
@@ -205,3 +207,4 @@ API 应围绕业务资源拆分：
 - 后续接入真实数据源时，应优先替换数据适配层，尽量不改前端展示结构。
 - 自选、预警、AI 结论这类状态或结果应通过 API 获取，避免只保存在前端临时状态里。
 - 持仓接口必须返回 `quarter`、`disclosureDate` 和 `source`，前端必须展示这些信息，避免误导用户把季报持仓当作实时持仓。
+- 同类基金对比和持仓变化属于分析服务层能力，前端只展示 API 结果，不在页面中重新计算排名或调仓结论。

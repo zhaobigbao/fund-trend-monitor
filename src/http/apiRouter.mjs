@@ -1,7 +1,9 @@
 import {
   buildAlerts,
+  buildHoldingChanges,
   buildHoldings,
   buildInsight,
+  buildPeerComparison,
   buildRealtime,
   buildReports,
   buildSectorExposure,
@@ -42,7 +44,9 @@ export function createApiRouter() {
       const [, code, resource] = fundMatch;
       if (resource === "trend") return json(res, buildTrend(code, url.searchParams.get("range") || "1m"));
       if (resource === "holdings") return json(res, buildHoldings(code));
+      if (resource === "holding-changes") return json(res, buildHoldingChanges(code));
       if (resource === "sectors") return json(res, buildSectorExposure(code));
+      if (resource === "peers") return json(res, buildPeerComparison(code));
       if (resource === "reports") return json(res, buildReports(code));
       if (resource === "insight") return json(res, buildInsight(code));
       if (resource === "alerts") return json(res, buildAlerts(code));
