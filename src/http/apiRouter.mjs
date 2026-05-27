@@ -14,6 +14,7 @@ import {
   updateWatchlist
 } from "../services/fundAnalytics.mjs";
 import { importExternalFund, listRecentSyncRuns, searchExternalFunds, syncFundNav, syncWatchlistNav } from "../services/fundImportService.mjs";
+import { removeFundFromPool, updateFundProfile } from "../services/fundPoolService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
 export function createApiRouter() {
@@ -38,6 +39,13 @@ export function createApiRouter() {
     if (req.method === "POST" && path === "/api/funds/import") {
       const body = await readJson(req);
       return json(res, await importExternalFund(String(body.code || ""), { syncNav: body.syncNav !== false }));
+    }
+
+    const fundRootMatch = path.match(/^\/api\/funds\/([^/]+)$/);
+    if (fundRootMatch) {
+      const [, code] = fundRootMatch;
+      if (req.method === "DELETE") return json(res, removeFundFromPool(code));
+      return notFound(res);
     }
 
     if (req.method === "GET" && path === "/api/watchlists") {
@@ -65,6 +73,10 @@ export function createApiRouter() {
       if (req.method === "POST" && resource === "sync-nav") {
         const body = await readJson(req);
         return json(res, await syncFundNav(code, { pages: Number(body.pages || 1), pageSize: Number(body.pageSize || 90) }));
+      }
+      if (req.method === "PATCH" && resource === "profile") {
+        const body = await readJson(req);
+        return json(res, updateFundProfile(code, body));
       }
       if (req.method !== "GET") return notFound(res);
       if (resource === "trend") return json(res, buildTrend(code, url.searchParams.get("range") || "1m"));

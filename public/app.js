@@ -34,6 +34,10 @@ function activeFunds() {
   return state.funds.filter((fund) => state.listMode === "all" || fund.watched);
 }
 
+function tagsText(tags = []) {
+  return Array.isArray(tags) ? tags.join("，") : "";
+}
+
 function renderFundList() {
   const rows = activeFunds();
   fundList.innerHTML = rows.length
@@ -46,6 +50,7 @@ function renderFundList() {
               <span class="watch-dot ${fund.watched ? "on" : ""}">${fund.watched ? "自选" : "观察"}</span>
               <strong>${fund.name}</strong>
               <div class="fund-meta"><span>${fund.code}</span><span>${fund.category}</span></div>
+              <div class="fund-profile-line"><span>${fund.groupName || "默认"}</span><span>${tagsText(fund.tags) || "无标签"}</span></div>
               <div class="fund-numbers">
                 <span>${fund.realtime.nav.toFixed(4)}</span>
                 <span class="${changeClass}">${formatPercent(fund.realtime.change)}</span>
@@ -95,6 +100,13 @@ function renderMetrics(fund, realtime) {
   setTrendClass($("#liveChange"), realtime.change);
   setTrendClass($("#quarterReturn"), fund.quarterlyReturn);
   setTrendClass($("#maxDrawdown"), fund.maxDrawdown);
+}
+
+function renderPoolProfile(fund) {
+  $("#poolGroupInput").value = fund.groupName || "默认";
+  $("#poolTagsInput").value = tagsText(fund.tags);
+  $("#poolNoteInput").value = fund.note || "";
+  $("#poolStatus").textContent = fund.profileUpdatedAt ? `上次保存 ${fund.profileUpdatedAt}` : "本地基金池信息";
 }
 
 function drawChart() {
@@ -363,6 +375,7 @@ async function loadSyncRuns() {
 }
 
 async function loadFund(code = state.selectedCode) {
+  if (!code) return;
   state.selectedCode = code;
   renderFundList();
   $("#chartStatus").textContent = "同步中";
@@ -384,6 +397,7 @@ async function loadFund(code = state.selectedCode) {
   state.trend = trend;
   renderSyncStatus(syncStatus);
   renderMetrics(fund, realtime);
+  renderPoolProfile(fund);
   renderHoldings(holdings);
   renderPeers(peers);
   renderHoldingChanges(holdingChanges);
@@ -412,6 +426,68 @@ async function toggleWatchlist() {
   });
   await loadFunds();
   await loadFund(state.selectedCode);
+}
+
+async function savePoolProfile() {
+  const fund = state.funds.find((item) => item.code === state.selectedCode);
+  if (!fund) return;
+  const button = $("#savePoolProfileButton");
+  button.disabled = true;
+  button.textContent = "保存中";
+  $("#poolStatus").textContent = "正在保存";
+  try {
+    const result = await fetchJson(`/api/funds/${fund.code}/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        groupName: $("#poolGroupInput").value,
+        tags: $("#poolTagsInput").value,
+        note: $("#poolNoteInput").value
+      })
+    });
+    if (!result.ok) throw new Error(result.error || "保存失败");
+    await loadFunds();
+    await loadFund(fund.code);
+    $("#poolStatus").textContent = "已保存";
+  } catch (error) {
+    $("#poolStatus").textContent = "保存失败，请稍后重试";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "保存管理信息";
+  }
+}
+
+async function removeCurrentFund() {
+  const fund = state.funds.find((item) => item.code === state.selectedCode);
+  if (!fund) return;
+  const confirmed = window.confirm(`确认从本地基金池移除 ${fund.name}（${fund.code}）？`);
+  if (!confirmed) return;
+
+  const button = $("#removeFundButton");
+  button.disabled = true;
+  button.textContent = "移除中";
+  try {
+    const result = await fetchJson(`/api/funds/${fund.code}`, { method: "DELETE" });
+    if (!result.ok) throw new Error(result.error || "移除失败");
+    state.search = "";
+    $("#fundSearch").value = "";
+    state.selectedCode = "";
+    await loadFunds();
+    if (state.funds.length) await loadFund(state.funds[0].code);
+    else {
+      renderFundList();
+      $("#fundName").textContent = "暂无基金";
+      $("#chartStatus").textContent = "等待导入";
+    }
+    await loadSyncRuns();
+  } catch (error) {
+    $("#poolStatus").textContent = "移除失败，请稍后重试";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "移除本地基金";
+  }
 }
 
 async function importFund(code) {
@@ -493,6 +569,8 @@ $("#fundSearch").addEventListener("input", async (event) => {
 });
 
 $("#watchToggle").addEventListener("click", toggleWatchlist);
+$("#savePoolProfileButton").addEventListener("click", savePoolProfile);
+$("#removeFundButton").addEventListener("click", removeCurrentFund);
 $("#syncNowButton").addEventListener("click", syncCurrentFundNav);
 $("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
 

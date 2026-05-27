@@ -255,12 +255,24 @@ button {
 }
 
 .fund-meta,
-.fund-numbers {
+.fund-numbers,
+.fund-profile-line {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.fund-profile-line {
+  margin-top: 7px;
+}
+
+.fund-profile-line span:last-child {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fund-numbers {
@@ -373,6 +385,93 @@ button {
   font-size: clamp(24px, 3vw, 34px);
   line-height: 1;
   letter-spacing: 0;
+}
+
+.pool-panel .section-head {
+  align-items: center;
+}
+
+.pool-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.7fr) minmax(220px, 1fr);
+  gap: 12px;
+}
+
+.pool-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pool-note-field,
+.pool-actions {
+  grid-column: 1 / -1;
+}
+
+.pool-form input,
+.pool-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fbfcff;
+  outline: none;
+  font: inherit;
+}
+
+.pool-form input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.pool-form textarea {
+  min-height: 74px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.pool-form input:focus,
+.pool-form textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.pool-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pool-actions small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pool-actions .sync-button {
+  margin-bottom: 0;
+}
+
+.danger-button {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #f1b8b4;
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 800;
+  background: #fff7f7;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.danger-button:disabled {
+  color: var(--muted);
+  border-color: var(--line);
+  background: #eef2f7;
+  cursor: wait;
 }
 
 .positive {
@@ -839,10 +938,16 @@ th:first-child {
   }
 
   .metrics,
+  .pool-form,
   .grid-two,
   .research-row,
   .lower {
     grid-template-columns: 1fr;
+  }
+
+  .pool-note-field,
+  .pool-actions {
+    grid-column: auto;
   }
 }
 
@@ -858,6 +963,12 @@ th:first-child {
   }
 
   .top-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pool-panel .section-head,
+  .pool-actions {
     align-items: stretch;
     flex-direction: column;
   }

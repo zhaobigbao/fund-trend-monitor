@@ -5,39 +5,52 @@ export function listFundRecords() {
     .prepare(
       `
       SELECT
-        code, name, manager, category, risk, nav,
-        daily_change AS dailyChange,
-        quarterly_return AS quarterlyReturn,
-        max_drawdown AS maxDrawdown,
-        volatility, size, benchmark,
-        update_at AS updateAt
-      FROM funds
-      ORDER BY code
+        f.code, f.name, f.manager, f.category, f.risk, f.nav,
+        f.daily_change AS dailyChange,
+        f.quarterly_return AS quarterlyReturn,
+        f.max_drawdown AS maxDrawdown,
+        f.volatility, f.size, f.benchmark,
+        f.update_at AS updateAt,
+        COALESCE(p.group_name, '默认') AS groupName,
+        COALESCE(p.tags, '') AS tags,
+        COALESCE(p.note, '') AS note,
+        p.updated_at AS profileUpdatedAt
+      FROM funds f
+      LEFT JOIN fund_pool_profiles p ON p.fund_code = f.code
+      ORDER BY COALESCE(p.group_name, '默认'), f.code
     `
     )
-    .all();
+    .all()
+    .map(normalizeFundRecord);
 }
 
 export function getFundRecord(code) {
-  return getDb()
+  const row = getDb()
     .prepare(
       `
       SELECT
-        code, name, manager, category, risk, nav,
-        daily_change AS dailyChange,
-        quarterly_return AS quarterlyReturn,
-        max_drawdown AS maxDrawdown,
-        volatility, size, benchmark,
-        update_at AS updateAt
-      FROM funds
-      WHERE code = ?
+        f.code, f.name, f.manager, f.category, f.risk, f.nav,
+        f.daily_change AS dailyChange,
+        f.quarterly_return AS quarterlyReturn,
+        f.max_drawdown AS maxDrawdown,
+        f.volatility, f.size, f.benchmark,
+        f.update_at AS updateAt,
+        COALESCE(p.group_name, '默认') AS groupName,
+        COALESCE(p.tags, '') AS tags,
+        COALESCE(p.note, '') AS note,
+        p.updated_at AS profileUpdatedAt
+      FROM funds f
+      LEFT JOIN fund_pool_profiles p ON p.fund_code = f.code
+      WHERE f.code = ?
     `
     )
     .get(code);
+  return row ? normalizeFundRecord(row) : undefined;
 }
 
 export function upsertFundRecord(fund) {
-  getDb()
+  const database = getDb();
+  database
     .prepare(
       `
       INSERT INTO funds (
@@ -69,6 +82,62 @@ export function upsertFundRecord(fund) {
       fund.benchmark,
       fund.updateAt
     );
+  database.prepare("INSERT OR IGNORE INTO fund_pool_profiles (fund_code) VALUES (?)").run(fund.code);
+}
+
+export function getFundPoolProfile(code) {
+  return normalizePoolProfile(
+    getDb()
+      .prepare(
+        `
+        SELECT
+          fund_code AS fundCode,
+          group_name AS groupName,
+          tags,
+          note,
+          updated_at AS updatedAt
+        FROM fund_pool_profiles
+        WHERE fund_code = ?
+      `
+      )
+      .get(code)
+  );
+}
+
+export function upsertFundPoolProfile(code, profile) {
+  const normalized = normalizeProfileInput(profile);
+  getDb()
+    .prepare(
+      `
+      INSERT INTO fund_pool_profiles (fund_code, group_name, tags, note, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(fund_code) DO UPDATE SET
+        group_name = excluded.group_name,
+        tags = excluded.tags,
+        note = excluded.note,
+        updated_at = CURRENT_TIMESTAMP
+    `
+    )
+    .run(code, normalized.groupName, normalized.tags, normalized.note);
+
+  return getFundPoolProfile(code);
+}
+
+export function removeFundRecord(code) {
+  const database = getDb();
+  const fund = getFundRecord(code);
+  if (!fund) return null;
+
+  database.exec("BEGIN");
+  try {
+    database.prepare("DELETE FROM sync_runs WHERE target LIKE ?").run(`%:${code}`);
+    database.prepare("DELETE FROM funds WHERE code = ?").run(code);
+    database.exec("COMMIT");
+    return fund;
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 export function listWatchlistCodes() {
@@ -297,4 +366,49 @@ export function listAlertRules() {
     `
     )
     .all();
+}
+
+function normalizeFundRecord(row) {
+  return {
+    ...row,
+    groupName: row.groupName || "默认",
+    tags: parseTags(row.tags),
+    note: row.note || "",
+    profileUpdatedAt: row.profileUpdatedAt || ""
+  };
+}
+
+function normalizePoolProfile(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    groupName: row.groupName || "默认",
+    tags: parseTags(row.tags),
+    note: row.note || "",
+    updatedAt: row.updatedAt || ""
+  };
+}
+
+function normalizeProfileInput(profile = {}) {
+  return {
+    groupName: String(profile.groupName || "默认").trim().slice(0, 24) || "默认",
+    tags: serializeTags(profile.tags),
+    note: String(profile.note || "").trim().slice(0, 280)
+  };
+}
+
+function parseTags(value = "") {
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function serializeTags(value = "") {
+  const tags = Array.isArray(value) ? value : String(value).split(/[，,]/);
+  return tags
+    .map((item) => String(item).trim().slice(0, 16))
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(",");
 }

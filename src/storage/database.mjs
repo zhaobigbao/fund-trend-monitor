@@ -52,6 +52,14 @@ function createSchema(database) {
       source TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS fund_pool_profiles (
+      fund_code TEXT PRIMARY KEY REFERENCES funds(code) ON DELETE CASCADE,
+      group_name TEXT NOT NULL DEFAULT '默认',
+      tags TEXT NOT NULL DEFAULT '',
+      note TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS fund_holdings (
       fund_code TEXT NOT NULL REFERENCES funds(code) ON DELETE CASCADE,
       quarter TEXT NOT NULL,
@@ -157,6 +165,8 @@ function seedDatabase(database) {
 
   const insertWatchlist = database.prepare("INSERT INTO watchlists (fund_code) VALUES (?)");
 
+  const insertPoolProfile = database.prepare("INSERT OR IGNORE INTO fund_pool_profiles (fund_code) VALUES (?)");
+
   const insertRule = database.prepare(`
     INSERT INTO alert_rules (id, name, metric, operator, threshold, level)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -192,6 +202,8 @@ function seedDatabase(database) {
       (previousHoldingRows[fund.code] || []).forEach(([name, stockCode, weight]) => {
         insertPreviousHolding.run(fund.code, previousQuarter, name, stockCode, weight);
       });
+
+      insertPoolProfile.run(fund.code);
     }
 
     for (const [sector, sectorReports] of Object.entries(reports)) {

@@ -39,6 +39,7 @@
 职责：
 
 - 基金搜索
+- 本地基金池导入、分组、标签、备注和移除
 - 自选基金列表
 - 实时估值和涨跌
 - 历史净值走势
@@ -143,6 +144,8 @@ API 应围绕业务资源拆分：
 - `/api/funds`
 - `/api/funds?q=关键词`
 - `/api/funds/import`
+- `/api/funds/:code`
+- `/api/funds/:code/profile`
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
 - `/api/funds/:code/holding-changes`
@@ -175,6 +178,7 @@ API 应围绕业务资源拆分：
 - `src/dataSources/eastmoneyFundSource.mjs`：外部基金数据源适配器，负责基金搜索和历史净值拉取。
 - `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
 - `src/services/fundImportService.mjs`：基金导入服务，负责外部搜索结果入库和初始净值同步。
+- `src/services/fundPoolService.mjs`：基金池管理服务，负责本地分组、标签、备注和基金移除。
 - `src/storage/database.mjs`：本地数据库 schema、建表和种子导入。
 - `src/http/apiRouter.mjs`：API 层，负责业务资源路由。
 - `src/http/staticFiles.mjs`：静态资源服务。
@@ -204,6 +208,7 @@ API 应围绕业务资源拆分：
 - 自选基金
 - 预警规则
 - 历史净值
+- 基金池管理信息：分组、标签、备注
 
 外部数据接入策略：
 
@@ -214,6 +219,8 @@ API 应围绕业务资源拆分：
 - 同步状态接口读取 `fund_nav_history` 和 `sync_runs`，向页面提供来源、记录数、最新净值日和最近同步结果。
 - 页面手动同步通过 API 触发服务层同步，服务层负责调用外部数据源、写入 SQLite 和记录同步结果。
 - 批量同步自选基金通过服务层顺序执行，并把每只基金的结果写入 `sync_runs`。
+- 基金池管理信息存放在 `fund_pool_profiles`，与 `funds` 基础资料分离，避免外部基金资料刷新时覆盖用户本地观察信息。
+- 从本地基金池移除基金时，由数据层删除 `funds` 主记录，并依赖外键级联清理自选、净值、持仓、披露和基金池资料；无外键的同步记录由数据层同步清理。
 - 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
 ## 数据模型规划
@@ -221,6 +228,7 @@ API 应围绕业务资源拆分：
 核心实体：
 
 - `funds`：基金基础信息
+- `fund_pool_profiles`：基金池本地管理信息，包括分组、标签、备注
 - `fund_nav_history`：基金净值历史
 - `fund_realtime_quotes`：实时估值
 - `fund_holdings`：基金季度持仓

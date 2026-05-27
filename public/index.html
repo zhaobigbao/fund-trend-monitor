@@ -85,6 +85,34 @@
           </div>
         </section>
 
+        <section class="panel pool-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">基金池管理</p>
+              <h3>分组、标签与观察备注</h3>
+            </div>
+            <button id="removeFundButton" class="danger-button" type="button">移除本地基金</button>
+          </div>
+          <div class="pool-form">
+            <label>
+              <span>分组</span>
+              <input id="poolGroupInput" type="text" maxlength="24" placeholder="默认" />
+            </label>
+            <label>
+              <span>标签</span>
+              <input id="poolTagsInput" type="text" maxlength="80" placeholder="用逗号分隔，例如 核心,消费" />
+            </label>
+            <label class="pool-note-field">
+              <span>备注</span>
+              <textarea id="poolNoteInput" rows="3" maxlength="280" placeholder="记录你的观察理由、风险点或下一步动作"></textarea>
+            </label>
+            <div class="pool-actions">
+              <small id="poolStatus">本地基金池信息</small>
+              <button id="savePoolProfileButton" class="sync-button" type="button">保存管理信息</button>
+            </div>
+          </div>
+        </section>
+
         <section class="chart-panel">
           <div class="section-head">
             <div>
