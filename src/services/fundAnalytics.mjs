@@ -1,6 +1,7 @@
 import {
   getFundRecord,
   getHoldingDisclosure,
+  getNavSyncSummary,
   listAlertRules,
   listFundRecords,
   listHoldingRows,
@@ -72,6 +73,26 @@ export function buildTrend(code, range = "1m") {
       value: Number(value.toFixed(4))
     };
   });
+}
+
+export function buildSyncStatus(code) {
+  const fund = getFund(code);
+  const summary = getNavSyncSummary(fund.code);
+  const synced = summary.recordCount > 0;
+  const stale = synced && isStaleNavDate(summary.latestNavDate);
+
+  return {
+    fundCode: fund.code,
+    status: synced ? (stale ? "stale" : "synced") : "pending",
+    label: synced ? (stale ? "待更新" : "已同步") : "待同步",
+    source: summary.source || "暂无来源",
+    recordCount: summary.recordCount,
+    firstNavDate: summary.firstNavDate || "",
+    latestNavDate: summary.latestNavDate || "",
+    latestSyncedAt: summary.latestSyncedAt || "",
+    latestRun: summary.latestRun,
+    message: buildSyncMessage(summary, stale)
+  };
 }
 
 export function buildRealtime(code) {
@@ -366,6 +387,20 @@ function trendLimitForRange(range) {
   if (range === "1w") return 7;
   if (range === "3m") return 90;
   return 30;
+}
+
+function isStaleNavDate(navDate) {
+  if (!navDate) return false;
+  const latest = new Date(`${navDate}T00:00:00+08:00`);
+  const now = new Date();
+  const days = (now.getTime() - latest.getTime()) / 86400000;
+  return days > 7;
+}
+
+function buildSyncMessage(summary, stale) {
+  if (!summary.recordCount) return "尚未同步历史净值，走势图将使用模拟曲线。";
+  if (stale) return `最近净值日为 ${summary.latestNavDate}，建议执行同步任务刷新。`;
+  return `已同步 ${summary.recordCount} 条历史净值，最近净值日 ${summary.latestNavDate}。`;
 }
 
 function formatGeneratedAt() {

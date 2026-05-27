@@ -422,6 +422,56 @@ button {
   height: 330px;
 }
 
+.sync-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sync-strip div {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.sync-strip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sync-strip strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-message {
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--teal);
+  border-radius: 6px;
+  color: #324154;
+  background: #f4faf8;
+  font-size: 13px;
+}
+
+.sync-message.pending {
+  border-left-color: var(--amber);
+  background: #fff8ed;
+}
+
+.sync-message.stale {
+  border-left-color: var(--red);
+  background: #fff5f5;
+}
+
 .grid-two {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
@@ -756,6 +806,10 @@ th:first-child {
     grid-template-columns: 1fr;
   }
 
+  .sync-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
   #trendChart {
     height: 260px;
   }
@@ -772,5 +826,11 @@ th:first-child {
   .peer-metrics,
   .change-weight {
     text-align: left;
+  }
+}
+
+@media (max-width: 460px) {
+  .sync-strip {
+    grid-template-columns: 1fr;
   }
 }

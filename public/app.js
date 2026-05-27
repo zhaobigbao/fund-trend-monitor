@@ -191,6 +191,15 @@ function renderHoldings(holdingData) {
     : `<tr><td colspan="5" class="table-empty">暂无持仓数据</td></tr>`;
 }
 
+function renderSyncStatus(status) {
+  $("#syncLabel").textContent = status.label;
+  $("#syncSource").textContent = status.source;
+  $("#syncRecords").textContent = status.recordCount ? `${status.recordCount} 条` : "0 条";
+  $("#syncLatestDate").textContent = status.latestNavDate || "暂无";
+  $("#syncMessage").textContent = status.message;
+  $("#syncMessage").className = `sync-message ${status.status}`;
+}
+
 function renderPeers(peerData) {
   $("#peerRank").textContent = `第 ${peerData.selectedRank}/${peerData.peerCount}`;
   $("#peerMeta").textContent = `对比基准 ${peerData.benchmark} · 综合评分由季度收益、回撤、波动和行业相似度估算`;
@@ -329,8 +338,9 @@ async function loadFund(code = state.selectedCode) {
   $("#chartStatus").textContent = "同步中";
 
   const fund = state.funds.find((item) => item.code === code) || (await fetchJson(`/api/funds?q=${encodeURIComponent(code)}`))[0];
-  const [trend, realtime, holdings, peers, holdingChanges, sectors, reports, insight, alerts] = await Promise.all([
+  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, sectors, reports, insight, alerts] = await Promise.all([
     fetchJson(`/api/funds/${code}/trend?range=${state.range}`),
+    fetchJson(`/api/funds/${code}/sync-status`),
     fetchJson(`/api/funds/${code}/realtime`),
     fetchJson(`/api/funds/${code}/holdings`),
     fetchJson(`/api/funds/${code}/peers`),
@@ -342,6 +352,7 @@ async function loadFund(code = state.selectedCode) {
   ]);
 
   state.trend = trend;
+  renderSyncStatus(syncStatus);
   renderMetrics(fund, realtime);
   renderHoldings(holdings);
   renderPeers(peers);

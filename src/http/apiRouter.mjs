@@ -7,6 +7,7 @@ import {
   buildRealtime,
   buildReports,
   buildSectorExposure,
+  buildSyncStatus,
   buildTrend,
   listFunds,
   listWatchlist,
@@ -57,6 +58,7 @@ export function createApiRouter() {
       if (resource === "holding-changes") return json(res, buildHoldingChanges(code));
       if (resource === "sectors") return json(res, buildSectorExposure(code));
       if (resource === "peers") return json(res, buildPeerComparison(code));
+      if (resource === "sync-status") return json(res, buildSyncStatus(code));
       if (resource === "reports") return json(res, buildReports(code));
       if (resource === "insight") return json(res, buildInsight(code));
       if (resource === "alerts") return json(res, buildAlerts(code));

@@ -33,6 +33,7 @@ http://127.0.0.1:4173
 - AI 风格的趋势结论、置信度、证据来源与操作观察点
 - SQLite 本地数据底座，自选基金和预警规则已落库
 - 可同步公开基金历史净值，走势图优先使用真实净值历史
+- 净值同步状态展示：来源、记录数、最新净值日
 
 ## 项目文档
 
@@ -54,6 +55,7 @@ http://127.0.0.1:4173
 - `/api/funds/:code/holding-changes`
 - `/api/funds/:code/sectors`
 - `/api/funds/:code/peers`
+- `/api/funds/:code/sync-status`
 - `/api/funds/:code/reports`
 - `/api/funds/:code/insight`
 - `/api/funds/:code/alerts`

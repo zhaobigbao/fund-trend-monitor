@@ -165,6 +165,55 @@ export function listNavHistory(code, limit = 60) {
     .reverse();
 }
 
+export function getNavSyncSummary(code) {
+  const summary = getDb()
+    .prepare(
+      `
+      SELECT
+        COUNT(*) AS recordCount,
+        MIN(nav_date) AS firstNavDate,
+        MAX(nav_date) AS latestNavDate,
+        MAX(synced_at) AS latestSyncedAt
+      FROM fund_nav_history
+      WHERE fund_code = ?
+    `
+    )
+    .get(code);
+
+  const latestRecord = getDb()
+    .prepare(
+      `
+      SELECT source
+      FROM fund_nav_history
+      WHERE fund_code = ?
+      ORDER BY nav_date DESC
+      LIMIT 1
+    `
+    )
+    .get(code);
+
+  const latestRun = getDb()
+    .prepare(
+      `
+      SELECT status, message, synced_at AS syncedAt
+      FROM sync_runs
+      WHERE target LIKE ?
+      ORDER BY synced_at DESC, id DESC
+      LIMIT 1
+    `
+    )
+    .get(`%${code}%`);
+
+  return {
+    recordCount: summary.recordCount,
+    firstNavDate: summary.firstNavDate,
+    latestNavDate: summary.latestNavDate,
+    latestSyncedAt: summary.latestSyncedAt,
+    source: latestRecord?.source || "",
+    latestRun: latestRun || null
+  };
+}
+
 export function upsertNavHistory(code, records) {
   const database = getDb();
   const statement = database.prepare(

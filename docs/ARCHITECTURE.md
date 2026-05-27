@@ -148,6 +148,7 @@ API 应围绕业务资源拆分：
 - `/api/funds/:code/holding-changes`
 - `/api/funds/:code/sectors`
 - `/api/funds/:code/peers`
+- `/api/funds/:code/sync-status`
 - `/api/funds/:code/reports`
 - `/api/funds/:code/insight`
 - `/api/funds/:code/alerts`
@@ -207,6 +208,7 @@ API 应围绕业务资源拆分：
 - 同步脚本负责把外部数据写入 SQLite，前端和 API 不直接请求第三方接口。
 - 从外部搜索导入基金时，只写入基础信息和历史净值；持仓、行业和研报数据允许暂时为空。
 - 趋势接口优先使用 `fund_nav_history` 中的真实净值历史；没有同步数据时回退到模拟曲线。
+- 同步状态接口读取 `fund_nav_history` 和 `sync_runs`，向页面提供来源、记录数、最新净值日和最近同步结果。
 - 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
 ## 数据模型规划
@@ -248,3 +250,4 @@ API 应围绕业务资源拆分：
 - 运行时数据必须通过 Provider 读取；前端和分析服务不得直接读取 SQLite 文件或种子数据。
 - 外部数据源不得直接耦合到页面层；新增真实数据接入时应先写 data source adapter，再写同步脚本或后台任务。
 - 对于外部导入但尚未同步季报持仓的基金，分析服务必须返回稳定空状态，不允许因缺少持仓数据导致接口失败。
+- 数据同步状态必须通过 API 暴露给前端，避免用户无法判断当前走势图来自真实数据还是模拟回退。

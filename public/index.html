@@ -93,6 +93,25 @@
             </div>
             <span id="chartStatus" class="status-pill">同步中</span>
           </div>
+          <div class="sync-strip" aria-label="净值同步状态">
+            <div>
+              <span>净值数据</span>
+              <strong id="syncLabel">--</strong>
+            </div>
+            <div>
+              <span>来源</span>
+              <strong id="syncSource">--</strong>
+            </div>
+            <div>
+              <span>记录数</span>
+              <strong id="syncRecords">--</strong>
+            </div>
+            <div>
+              <span>最新净值日</span>
+              <strong id="syncLatestDate">--</strong>
+            </div>
+          </div>
+          <div id="syncMessage" class="sync-message"></div>
           <canvas id="trendChart" width="1100" height="360" aria-label="基金走势图"></canvas>
         </section>
 
