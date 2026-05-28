@@ -154,6 +154,25 @@ function createSchema(database) {
       message TEXT NOT NULL,
       synced_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS ai_insights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fund_code TEXT NOT NULL REFERENCES funds(code) ON DELETE CASCADE,
+      headline TEXT NOT NULL,
+      confidence INTEGER NOT NULL,
+      data_scope TEXT NOT NULL,
+      sections_json TEXT NOT NULL,
+      bullets_json TEXT NOT NULL,
+      actions_json TEXT NOT NULL,
+      evidence_json TEXT NOT NULL,
+      signature TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'rules-v1',
+      generated_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ai_insights_fund_created
+      ON ai_insights (fund_code, created_at DESC, id DESC);
   `);
 }
 

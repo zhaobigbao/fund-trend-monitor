@@ -443,6 +443,25 @@ function renderInsightItems(selector, items = [], type) {
     : `<div class="empty-state">暂无数据</div>`;
 }
 
+function renderInsightHistory(history = []) {
+  $("#insightHistorySummary").textContent = history.length ? `最近 ${history.length} 条` : "暂无记录";
+  $("#insightHistoryList").innerHTML = history.length
+    ? history
+        .map(
+          (item) => `
+            <article class="insight-history-item">
+              <div>
+                <strong>${item.headline}</strong>
+                <span>${item.createdAt || item.generatedAt} · ${item.dataScope}</span>
+              </div>
+              <b>置信度 ${item.confidence}</b>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">暂无历史结论</div>`;
+}
+
 async function loadFunds() {
   const query = state.search ? `?q=${encodeURIComponent(state.search)}` : "";
   state.funds = await fetchJson(`/api/funds${query}`);
@@ -506,6 +525,8 @@ async function loadFund(code = state.selectedCode) {
   renderSectors(sectors);
   renderReports(reports);
   renderInsight(insight);
+  const insightHistory = await fetchJson(`/api/funds/${code}/insights?limit=5`);
+  renderInsightHistory(insightHistory);
   renderAlerts(alerts);
   drawChart();
   $("#chartStatus").textContent = "已更新";

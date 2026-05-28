@@ -34,6 +34,7 @@ http://127.0.0.1:4173
 - 按持仓个股、赛道、行业多维聚合研报摘要
 - 预警规则展示
 - 结构化 AI 趋势结论：趋势判断、风险提示、证据链与观察指标
+- AI 结论历史回看，最近结论会落库并按内容去重
 - SQLite 本地数据底座，自选基金和预警规则已落库
 - 可同步公开基金历史净值，走势图优先使用真实净值历史
 - 净值同步状态展示：来源、记录数、最新净值日
@@ -65,6 +66,7 @@ http://127.0.0.1:4173
 - `/api/funds/:code/sync-nav`
 - `/api/funds/:code/reports`
 - `/api/funds/:code/insight`
+- `/api/funds/:code/insights`
 - `/api/funds/:code/alerts`
 - `/api/watchlists`
 - `/api/watchlists/sync-nav`

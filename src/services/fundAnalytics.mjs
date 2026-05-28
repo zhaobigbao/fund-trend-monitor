@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import {
   getFundRecord,
   getHoldingDisclosure,
+  listAiInsightRecords,
   getNavSyncSummary,
   listAlertRules,
   listFundRecords,
@@ -9,6 +11,7 @@ import {
   listPreviousHoldingRows,
   listReportsBySignals,
   listWatchlistCodes,
+  saveAiInsightRecord,
   setWatchlistCode
 } from "../data/sqliteProvider.mjs";
 
@@ -378,7 +381,7 @@ export function buildInsight(code) {
       ]
     };
 
-    return buildInsightPayload({
+    return persistInsightPayload(fund.code, {
       headline: `${fund.name}已导入基金池，当前主要可观察净值走势，持仓与研报仍待同步。`,
       confidence: 45,
       generatedAt: formatGeneratedAt(),
@@ -464,7 +467,7 @@ export function buildInsight(code) {
     ]
   };
 
-  return buildInsightPayload({
+  return persistInsightPayload(fund.code, {
     headline: `${fund.name}当前趋势偏${fund.dailyChange >= 0 ? "强" : "震荡"}，核心观察点在${topSector.sector}配置延续性`,
     confidence: fund.dailyChange >= 0 ? 78 : 64,
     generatedAt: formatGeneratedAt(),
@@ -473,8 +476,23 @@ export function buildInsight(code) {
   });
 }
 
-function buildInsightPayload({ headline, confidence, generatedAt, dataScope, sections }) {
+export function listInsightHistory(code, limit = 8) {
+  const fund = getFund(code);
+  return listAiInsightRecords(fund.code, limit);
+}
+
+function persistInsightPayload(code, input) {
+  const payload = buildInsightPayload(input);
+  const record = saveAiInsightRecord(code, payload);
   return {
+    ...payload,
+    snapshotId: record?.id || null,
+    recordedAt: record?.createdAt || ""
+  };
+}
+
+function buildInsightPayload({ headline, confidence, generatedAt, dataScope, sections }) {
+  const payload = {
     headline,
     confidence,
     generatedAt,
@@ -482,8 +500,27 @@ function buildInsightPayload({ headline, confidence, generatedAt, dataScope, sec
     sections,
     bullets: sections.trend.map((item) => `${item.title}：${item.detail}`),
     actions: sections.watchpoints.map((item) => `${item.title}：${item.detail}`),
-    evidence: sections.evidence.map((item) => `${item.title}：${item.detail}`)
+    evidence: sections.evidence.map((item) => `${item.title}：${item.detail}`),
+    source: "rules-v1"
   };
+  return {
+    ...payload,
+    signature: buildInsightSignature(payload)
+  };
+}
+
+function buildInsightSignature(payload) {
+  return createHash("sha1")
+    .update(
+      JSON.stringify({
+        headline: payload.headline,
+        confidence: payload.confidence,
+        dataScope: payload.dataScope,
+        sections: payload.sections,
+        source: payload.source
+      })
+    )
+    .digest("hex");
 }
 
 function formatPercent(value) {

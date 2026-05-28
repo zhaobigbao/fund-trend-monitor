@@ -533,6 +533,92 @@ export function listSyncRuns(limit = 12) {
     .all(limit);
 }
 
+export function saveAiInsightRecord(code, insight) {
+  const latest = getLatestAiInsightRecord(code);
+  if (latest?.signature === insight.signature) return latest;
+
+  getDb()
+    .prepare(
+      `
+      INSERT INTO ai_insights (
+        fund_code, headline, confidence, data_scope, sections_json,
+        bullets_json, actions_json, evidence_json, signature, source, generated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+    .run(
+      code,
+      insight.headline,
+      insight.confidence,
+      insight.dataScope,
+      JSON.stringify(insight.sections || {}),
+      JSON.stringify(insight.bullets || []),
+      JSON.stringify(insight.actions || []),
+      JSON.stringify(insight.evidence || []),
+      insight.signature,
+      insight.source || "rules-v1",
+      insight.generatedAt
+    );
+
+  return getLatestAiInsightRecord(code);
+}
+
+export function getLatestAiInsightRecord(code) {
+  const row = getDb()
+    .prepare(
+      `
+      SELECT
+        id,
+        fund_code AS fundCode,
+        headline,
+        confidence,
+        data_scope AS dataScope,
+        sections_json AS sectionsJson,
+        bullets_json AS bulletsJson,
+        actions_json AS actionsJson,
+        evidence_json AS evidenceJson,
+        signature,
+        source,
+        generated_at AS generatedAt,
+        created_at AS createdAt
+      FROM ai_insights
+      WHERE fund_code = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT 1
+    `
+    )
+    .get(code);
+  return row ? normalizeAiInsightRecord(row) : null;
+}
+
+export function listAiInsightRecords(code, limit = 8) {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        id,
+        fund_code AS fundCode,
+        headline,
+        confidence,
+        data_scope AS dataScope,
+        sections_json AS sectionsJson,
+        bullets_json AS bulletsJson,
+        actions_json AS actionsJson,
+        evidence_json AS evidenceJson,
+        signature,
+        source,
+        generated_at AS generatedAt,
+        created_at AS createdAt
+      FROM ai_insights
+      WHERE fund_code = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT ?
+    `
+    )
+    .all(code, limit)
+    .map(normalizeAiInsightRecord);
+}
+
 export function listAlertRules() {
   return getDb()
     .prepare(
@@ -544,6 +630,24 @@ export function listAlertRules() {
     `
     )
     .all();
+}
+
+function normalizeAiInsightRecord(row) {
+  return {
+    id: row.id,
+    fundCode: row.fundCode,
+    headline: row.headline,
+    confidence: row.confidence,
+    dataScope: row.dataScope,
+    sections: parseJson(row.sectionsJson, {}),
+    bullets: parseJson(row.bulletsJson, []),
+    actions: parseJson(row.actionsJson, []),
+    evidence: parseJson(row.evidenceJson, []),
+    signature: row.signature,
+    source: row.source,
+    generatedAt: row.generatedAt,
+    createdAt: row.createdAt
+  };
 }
 
 function normalizeFundRecord(row) {
@@ -589,6 +693,14 @@ function serializeTags(value = "") {
     .filter(Boolean)
     .slice(0, 8)
     .join(",");
+}
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(value || "");
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizeStockTagRecord(row) {

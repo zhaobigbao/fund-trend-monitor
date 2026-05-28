@@ -9,6 +9,7 @@ import {
   buildSectorExposure,
   buildSyncStatus,
   buildTrend,
+  listInsightHistory,
   listFunds,
   listWatchlist,
   updateWatchlist
@@ -108,6 +109,7 @@ export function createApiRouter() {
       if (resource === "sync-status") return json(res, buildSyncStatus(code));
       if (resource === "reports") return json(res, buildReports(code));
       if (resource === "insight") return json(res, buildInsight(code));
+      if (resource === "insights") return json(res, listInsightHistory(code, Number(url.searchParams.get("limit") || 8)));
       if (resource === "alerts") return json(res, buildAlerts(code));
       if (resource === "realtime") return json(res, buildRealtime(code));
     }

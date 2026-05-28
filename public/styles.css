@@ -955,6 +955,69 @@ th:first-child {
   overflow-wrap: anywhere;
 }
 
+.insight-history {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.insight-history-head,
+.insight-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.insight-history-head h4 {
+  margin: 0;
+  color: #324154;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.insight-history-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.insight-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.insight-history-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.insight-history-item:last-child {
+  border-bottom: 0;
+}
+
+.insight-history-item strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #263341;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.insight-history-item span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.insight-history-item b {
+  color: var(--teal);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .disclosure-line {
   margin: -5px 0 12px;
   color: var(--muted);
@@ -1206,14 +1269,18 @@ th:first-child {
   .peer-row,
   .change-row,
   .stock-tag-row,
-  .sync-run {
+  .sync-run,
+  .insight-item,
+  .insight-history-item {
     grid-template-columns: 1fr;
   }
 
   .peer-metrics,
   .change-weight,
   .stock-tag-row > div:last-child,
-  .sync-run > div:last-child {
+  .sync-run > div:last-child,
+  .insight-item span,
+  .insight-history-item b {
     text-align: left;
   }
 }
