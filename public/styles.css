@@ -600,6 +600,52 @@ button {
   align-items: center;
 }
 
+.data-source-panel .section-head {
+  align-items: center;
+}
+
+.source-coverage-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.source-coverage-row {
+  display: grid;
+  min-height: 86px;
+  gap: 8px;
+  padding: 11px 12px;
+  border-left: 3px solid var(--teal);
+  border-radius: 6px;
+  background: #f4faf8;
+}
+
+.source-coverage-row.pending,
+.source-coverage-row.needsHoldings {
+  border-left-color: var(--amber);
+  background: #fff8ed;
+}
+
+.source-coverage-row.partial {
+  border-left-color: var(--violet);
+  background: #f7f6ff;
+}
+
+.source-coverage-row strong,
+.source-coverage-row b {
+  display: block;
+  color: #263341;
+  font-size: 13px;
+}
+
+.source-coverage-row span,
+.source-coverage-row small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .stock-tag-editor {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(150px, 1fr));
@@ -1032,6 +1078,88 @@ th:first-child {
   align-items: center;
 }
 
+.sector-radar-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sector-radar-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sector-radar-head,
+.sector-radar-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sector-radar-head strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 14px;
+}
+
+.sector-radar-head span,
+.sector-radar-meta span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sector-radar-head b {
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.sector-radar-chart {
+  width: 100%;
+  height: 58px;
+  border-radius: 6px;
+  background: #f7f9fd;
+}
+
+.sector-radar-chart svg {
+  display: block;
+  width: 100%;
+  height: 58px;
+  padding: 8px;
+}
+
+.sector-radar-chart path {
+  fill: none;
+  stroke: var(--blue);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.sparkline-empty {
+  height: 58px;
+}
+
+.sector-radar-holdings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sector-radar-holdings span {
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #234155;
+  background: #ecf2f8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .sector-name,
 .sector-weight {
   color: #324154;
@@ -1208,6 +1336,7 @@ th:first-child {
   .pool-form,
   .holding-editor-grid,
   .stock-tag-editor,
+  .source-coverage-list,
   .grid-two,
   .research-row,
   .lower {

@@ -113,6 +113,18 @@
           </div>
         </section>
 
+        <section class="panel data-source-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">数据源中心</p>
+              <h3>来源覆盖与真实数据同步</h3>
+            </div>
+            <button id="syncRealDataButton" class="sync-button" type="button">同步持仓/板块</button>
+          </div>
+          <div id="sourceCoverageRows" class="source-coverage-list"></div>
+          <div id="sourceSyncStatus" class="disclosure-line">数据源覆盖状态</div>
+        </section>
+
         <section class="chart-panel">
           <div class="section-head">
             <div>
@@ -323,6 +335,18 @@
               </div>
             </div>
             <div id="sectorBars" class="sector-bars"></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">板块实时雷达</p>
+                <h3>持仓映射走势</h3>
+              </div>
+              <span id="sectorRadarStatus" class="status-pill">--</span>
+            </div>
+            <div id="sectorRadarMeta" class="disclosure-line"></div>
+            <div id="sectorRadarList" class="sector-radar-list"></div>
           </div>
 
           <div class="panel">

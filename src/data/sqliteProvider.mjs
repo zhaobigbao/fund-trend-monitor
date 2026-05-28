@@ -533,6 +533,166 @@ export function listSyncRuns(limit = 12) {
     .all(limit);
 }
 
+export function listDataSourceRecords() {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        id, name, kind, enabled, priority,
+        capabilities_json AS capabilitiesJson,
+        config_json AS configJson,
+        health_status AS healthStatus,
+        last_checked_at AS lastCheckedAt
+      FROM data_sources
+      ORDER BY priority, id
+    `
+    )
+    .all()
+    .map(normalizeDataSourceRecord);
+}
+
+export function listDataSourceDefaultRecords() {
+  return getDb()
+    .prepare(
+      `
+      SELECT domain, source_id AS sourceId
+      FROM data_source_defaults
+      ORDER BY domain
+    `
+    )
+    .all();
+}
+
+export function upsertDataSourceDefault(domain, sourceId) {
+  getDb()
+    .prepare(
+      `
+      INSERT INTO data_source_defaults (domain, source_id)
+      VALUES (?, ?)
+      ON CONFLICT(domain) DO UPDATE SET source_id = excluded.source_id
+    `
+    )
+    .run(domain, sourceId);
+}
+
+export function getFundSourceBinding(code, domain) {
+  return getDb()
+    .prepare(
+      `
+      SELECT source_id AS sourceId
+      FROM fund_source_bindings
+      WHERE fund_code = ? AND domain = ?
+    `
+    )
+    .get(code, domain)?.sourceId;
+}
+
+export function upsertFundSourceBinding(code, domain, sourceId) {
+  getDb()
+    .prepare(
+      `
+      INSERT INTO fund_source_bindings (fund_code, domain, source_id)
+      VALUES (?, ?, ?)
+      ON CONFLICT(fund_code, domain) DO UPDATE SET source_id = excluded.source_id
+    `
+    )
+    .run(code, domain, sourceId);
+}
+
+export function updateDataSourceHealth(id, status) {
+  getDb()
+    .prepare(
+      `
+      UPDATE data_sources
+      SET health_status = ?, last_checked_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `
+    )
+    .run(status, id);
+}
+
+export function upsertSectorRealtimeQuote(sourceId, quote) {
+  getDb()
+    .prepare(
+      `
+      INSERT INTO sector_realtime_quotes (
+        source_id, sector_code, sector_name, sector_type, latest_price,
+        change_percent, turnover_rate, up_count, down_count,
+        leading_stock, leading_stock_code, quoted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(source_id, sector_code) DO UPDATE SET
+        sector_name = excluded.sector_name,
+        sector_type = excluded.sector_type,
+        latest_price = excluded.latest_price,
+        change_percent = excluded.change_percent,
+        turnover_rate = excluded.turnover_rate,
+        up_count = excluded.up_count,
+        down_count = excluded.down_count,
+        leading_stock = excluded.leading_stock,
+        leading_stock_code = excluded.leading_stock_code,
+        quoted_at = excluded.quoted_at
+    `
+    )
+    .run(
+      sourceId,
+      quote.code,
+      quote.name,
+      quote.type,
+      quote.latestPrice,
+      quote.changePercent,
+      quote.turnoverRate,
+      quote.upCount,
+      quote.downCount,
+      quote.leadingStock,
+      quote.leadingStockCode,
+      quote.quotedAt
+    );
+}
+
+export function replaceSectorConstituents(sourceId, sectorCode, sectorName, rows) {
+  const database = getDb();
+  const deleteRows = database.prepare("DELETE FROM sector_constituents WHERE source_id = ? AND sector_code = ?");
+  const insertRow = database.prepare(`
+    INSERT INTO sector_constituents (
+      source_id, sector_code, sector_name, stock_code, stock_name, latest_price, change_percent, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `);
+
+  database.exec("BEGIN");
+  try {
+    deleteRows.run(sourceId, sectorCode);
+    for (const row of rows) {
+      insertRow.run(sourceId, sectorCode, sectorName, row.stockCode, row.stockName, row.latestPrice, row.changePercent);
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function replaceSectorIntradayPoints(sourceId, sectorCode, period, points) {
+  const database = getDb();
+  const deleteRows = database.prepare("DELETE FROM sector_intraday_points WHERE source_id = ? AND sector_code = ? AND period = ?");
+  const insertRow = database.prepare(`
+    INSERT INTO sector_intraday_points (
+      source_id, sector_code, period, point_time, open, close, high, low, volume, amount
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  database.exec("BEGIN");
+  try {
+    deleteRows.run(sourceId, sectorCode, period);
+    for (const point of points) {
+      insertRow.run(sourceId, sectorCode, period, point.time, point.open, point.close, point.high, point.low, point.volume, point.amount);
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 export function saveAiInsightRecord(code, insight) {
   const latest = getLatestAiInsightRecord(code);
   if (latest?.signature === insight.signature) return latest;
@@ -630,6 +790,20 @@ export function listAlertRules() {
     `
     )
     .all();
+}
+
+function normalizeDataSourceRecord(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    enabled: Boolean(row.enabled),
+    priority: row.priority,
+    capabilities: parseJson(row.capabilitiesJson, {}),
+    config: parseJson(row.configJson, {}),
+    healthStatus: row.healthStatus,
+    lastCheckedAt: row.lastCheckedAt || ""
+  };
 }
 
 function normalizeAiInsightRecord(row) {

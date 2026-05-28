@@ -18,6 +18,8 @@ import { importExternalFund, listRecentSyncRuns, searchExternalFunds, syncFundNa
 import { updateFundHoldings } from "../services/fundHoldingService.mjs";
 import { removeFundFromPool, updateFundProfile } from "../services/fundPoolService.mjs";
 import { listFundStockTags, listStocks, updateStockTag } from "../services/stockTagService.mjs";
+import { buildSourceCoverage, listDataSources, testDataSource, updateDataSourceDefaults, updateFundSourceBindings } from "../services/dataSourceService.mjs";
+import { buildSectorRadar, syncFundRealData } from "../services/sectorRadarService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
 export function createApiRouter() {
@@ -37,6 +39,22 @@ export function createApiRouter() {
 
     if (req.method === "GET" && path === "/api/stocks") {
       return json(res, listStocks(url.searchParams.get("q") || ""));
+    }
+
+    if (req.method === "GET" && path === "/api/data-sources") {
+      return json(res, listDataSources());
+    }
+
+    if (req.method === "PATCH" && path === "/api/data-sources/defaults") {
+      const body = await readJson(req);
+      return json(res, updateDataSourceDefaults(body));
+    }
+
+    const dataSourceTestMatch = path.match(/^\/api\/data-sources\/([^/]+)\/test$/);
+    if (dataSourceTestMatch) {
+      const [, sourceId] = dataSourceTestMatch;
+      if (req.method === "POST") return json(res, await testDataSource(sourceId));
+      return notFound(res);
     }
 
     const stockTagMatch = path.match(/^\/api\/stocks\/([^/]+)\/tags$/);
@@ -91,9 +109,14 @@ export function createApiRouter() {
         const body = await readJson(req);
         return json(res, await syncFundNav(code, { pages: Number(body.pages || 1), pageSize: Number(body.pageSize || 90) }));
       }
+      if (req.method === "POST" && resource === "sync-all") return json(res, await syncFundRealData(code));
       if (req.method === "PATCH" && resource === "profile") {
         const body = await readJson(req);
         return json(res, updateFundProfile(code, body));
+      }
+      if (req.method === "PATCH" && resource === "source-bindings") {
+        const body = await readJson(req);
+        return json(res, updateFundSourceBindings(code, body));
       }
       if (req.method === "PUT" && resource === "holdings") {
         const body = await readJson(req);
@@ -110,6 +133,8 @@ export function createApiRouter() {
       if (resource === "reports") return json(res, buildReports(code));
       if (resource === "insight") return json(res, buildInsight(code));
       if (resource === "insights") return json(res, listInsightHistory(code, Number(url.searchParams.get("limit") || 8)));
+      if (resource === "source-coverage") return json(res, buildSourceCoverage(code));
+      if (resource === "sector-radar") return json(res, await buildSectorRadar(code));
       if (resource === "alerts") return json(res, buildAlerts(code));
       if (resource === "realtime") return json(res, buildRealtime(code));
     }

@@ -212,9 +212,11 @@ API 应围绕业务资源拆分：
 - `server.mjs`：服务入口，只负责组合 API 路由和静态资源服务。
 - `src/data/mockData.mjs`：种子数据，用于初始化本地 SQLite，后续真实数据源接入后应逐步减少这里的业务数据。
 - `src/data/sqliteProvider.mjs`：SQLite 数据 Provider，负责向服务层提供基金、持仓、研报、自选和预警规则数据。
-- `src/dataSources/eastmoneyFundSource.mjs`：外部基金数据源适配器，负责基金搜索和历史净值拉取。
+- `src/dataSources/eastmoneyFundSource.mjs`：东方财富公开数据源适配器，负责基金搜索、历史净值、基金持仓、行业/概念板块实时行情、板块成份股和分钟走势。
 - `src/dataSources/`：后续新增 AKShare、Tushare、iFinD、Wind、Choice 等 adapter 时统一放在这里，不直接接入页面层。
 - `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
+- `src/services/dataSourceService.mjs`：数据源管理服务，负责数据源列表、默认源、基金级绑定和来源覆盖状态。
+- `src/services/sectorRadarService.mjs`：板块实时雷达服务，负责按基金持仓映射行业/概念板块、同步真实持仓和板块实时走势。
 - `src/services/fundImportService.mjs`：基金导入服务，负责外部搜索结果入库和初始净值同步。
 - `src/services/fundHoldingService.mjs`：持仓管理服务，负责本地季度持仓补录、校验和任务记录。
 - `src/services/fundPoolService.mjs`：基金池管理服务，负责本地分组、标签、备注和基金移除。
@@ -272,6 +274,7 @@ API 应围绕业务资源拆分：
 - AI 结论需要保留 `bullets`、`actions`、`evidence` 兼容字段，方便旧页面、脚本或后续移动端逐步迁移。
 - AI 结论通过 `ai_insights` 落库，使用内容签名去重；当前结论接口负责生成并沉淀快照，历史接口负责回看最近结论。
 - 数据源切换按 `docs/DATA_SOURCE_STRATEGY.md` 推进，MVP 优先使用 AKShare 补齐概念板块和行业板块实时走势，商业版本预留 iFinD/Wind/Choice。
+- 当前实现优先使用东方财富公开接口作为 `eastmoney` 数据源，已覆盖基金搜索、历史净值、基金持仓、行业/概念板块实时行情、板块成份股和分钟走势。
 - 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
 ## 数据模型规划

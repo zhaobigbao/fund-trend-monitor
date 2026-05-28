@@ -25,6 +25,7 @@ export function initializeDatabase(database = getDb()) {
   createSchema(database);
   migrateSchema(database);
   seedDatabase(database);
+  seedDataSources(database);
   backfillStockTags(database);
   backfillResearchReportTargets(database);
   seedResearchIntelligence(database);
@@ -173,6 +174,80 @@ function createSchema(database) {
 
     CREATE INDEX IF NOT EXISTS idx_ai_insights_fund_created
       ON ai_insights (fund_code, created_at DESC, id DESC);
+
+    CREATE TABLE IF NOT EXISTS data_sources (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      priority INTEGER NOT NULL DEFAULT 100,
+      capabilities_json TEXT NOT NULL,
+      config_json TEXT NOT NULL DEFAULT '{}',
+      health_status TEXT NOT NULL DEFAULT 'unknown',
+      last_checked_at TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS data_source_defaults (
+      domain TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL REFERENCES data_sources(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS fund_source_bindings (
+      fund_code TEXT NOT NULL REFERENCES funds(code) ON DELETE CASCADE,
+      domain TEXT NOT NULL,
+      source_id TEXT NOT NULL REFERENCES data_sources(id),
+      PRIMARY KEY (fund_code, domain)
+    );
+
+    CREATE TABLE IF NOT EXISTS sector_aliases (
+      source_id TEXT NOT NULL REFERENCES data_sources(id),
+      source_sector_name TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      sector_type TEXT NOT NULL,
+      PRIMARY KEY (source_id, source_sector_name)
+    );
+
+    CREATE TABLE IF NOT EXISTS sector_realtime_quotes (
+      source_id TEXT NOT NULL REFERENCES data_sources(id),
+      sector_code TEXT NOT NULL,
+      sector_name TEXT NOT NULL,
+      sector_type TEXT NOT NULL,
+      latest_price REAL,
+      change_percent REAL,
+      turnover_rate REAL,
+      up_count INTEGER,
+      down_count INTEGER,
+      leading_stock TEXT,
+      leading_stock_code TEXT,
+      quoted_at TEXT NOT NULL,
+      PRIMARY KEY (source_id, sector_code)
+    );
+
+    CREATE TABLE IF NOT EXISTS sector_intraday_points (
+      source_id TEXT NOT NULL REFERENCES data_sources(id),
+      sector_code TEXT NOT NULL,
+      period TEXT NOT NULL,
+      point_time TEXT NOT NULL,
+      open REAL,
+      close REAL,
+      high REAL,
+      low REAL,
+      volume REAL,
+      amount REAL,
+      PRIMARY KEY (source_id, sector_code, period, point_time)
+    );
+
+    CREATE TABLE IF NOT EXISTS sector_constituents (
+      source_id TEXT NOT NULL REFERENCES data_sources(id),
+      sector_code TEXT NOT NULL,
+      sector_name TEXT NOT NULL,
+      stock_code TEXT NOT NULL,
+      stock_name TEXT NOT NULL,
+      latest_price REAL,
+      change_percent REAL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (source_id, sector_code, stock_code)
+    );
   `);
 }
 
@@ -296,6 +371,42 @@ function backfillResearchReportTargets(database) {
     `
     )
     .run();
+}
+
+function seedDataSources(database) {
+  const insertSource = database.prepare(`
+    INSERT INTO data_sources (
+      id, name, kind, enabled, priority, capabilities_json, config_json, health_status, last_checked_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      kind = excluded.kind,
+      enabled = excluded.enabled,
+      priority = excluded.priority,
+      capabilities_json = excluded.capabilities_json
+  `);
+
+  const insertDefault = database.prepare(`
+    INSERT OR IGNORE INTO data_source_defaults (domain, source_id)
+    VALUES (?, ?)
+  `);
+
+  const eastmoneyCapabilities = {
+    fundSearch: true,
+    fundNav: true,
+    fundHoldings: true,
+    stockTags: false,
+    industryBoards: true,
+    conceptBoards: true,
+    boardIntraday: true,
+    researchReports: false
+  };
+
+  insertSource.run("eastmoney", "东方财富公开数据", "public", 1, 10, JSON.stringify(eastmoneyCapabilities), "{}", "unknown", "");
+  insertDefault.run("fund", "eastmoney");
+  insertDefault.run("fundNav", "eastmoney");
+  insertDefault.run("fundHoldings", "eastmoney");
+  insertDefault.run("sectorBoard", "eastmoney");
 }
 
 function seedResearchIntelligence(database) {

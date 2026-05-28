@@ -38,6 +38,8 @@ http://127.0.0.1:4173
 - SQLite 本地数据底座，自选基金和预警规则已落库
 - 可同步公开基金历史净值，走势图优先使用真实净值历史
 - 净值同步状态展示：来源、记录数、最新净值日
+- 数据源中心：展示各模块来源覆盖状态
+- 东方财富真实持仓同步与板块实时雷达，支持查看 CPO 等概念板块当天走势和重仓股交集
 
 ## 项目文档
 
@@ -69,6 +71,10 @@ http://127.0.0.1:4173
 - `/api/funds/:code/insight`
 - `/api/funds/:code/insights`
 - `/api/funds/:code/alerts`
+- `/api/funds/:code/source-coverage`
+- `/api/funds/:code/sector-radar`
+- `/api/funds/:code/sync-all`
+- `/api/data-sources`
 - `/api/watchlists`
 - `/api/watchlists/sync-nav`
 - `/api/stocks`

@@ -9,6 +9,7 @@ const state = {
   holdings: null,
   stockTags: [],
   selectedStockCode: "",
+  dataSources: [],
   searchTimer: null
 };
 
@@ -354,6 +355,87 @@ function renderReports(reports) {
     : `<div class="empty-state">暂无匹配研报</div>`;
 }
 
+function renderSourceCoverage(coverage) {
+  $("#sourceCoverageRows").innerHTML = coverage.domains
+    .map(
+      (item) => `
+        <article class="source-coverage-row ${item.status}">
+          <div>
+            <strong>${item.label}</strong>
+            <span>${item.detail}</span>
+          </div>
+          <div>
+            <b>${item.sourceName}</b>
+            <small>${sourceStatusText(item.status)}</small>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+  $("#sourceSyncStatus").textContent = `当前基金 ${coverage.fundName} · 默认板块源 ${coverage.defaults.sectorBoard || "eastmoney"}`;
+}
+
+function sourceStatusText(status) {
+  if (status === "ready") return "可用";
+  if (status === "needsHoldings") return "待持仓";
+  if (status === "partial") return "部分";
+  return "待同步";
+}
+
+function renderSectorRadar(radar) {
+  $("#sectorRadarStatus").textContent = radar.boards.length ? `${radar.boards.length} 个板块` : "待同步";
+  $("#sectorRadarMeta").textContent = `${radar.source} · ${radar.holdingQuarter} · ${radar.generatedAt} · ${radar.message}`;
+  $("#sectorRadarList").innerHTML = radar.boards.length
+    ? radar.boards
+        .map(
+          (board) => `
+            <article class="sector-radar-card">
+              <div class="sector-radar-head">
+                <div>
+                  <strong>${board.name}</strong>
+                  <span>${board.type === "concept" ? "概念板块" : "行业板块"} · ${board.code}</span>
+                </div>
+                <b class="${board.changePercent >= 0 ? "positive" : "negative"}">${formatPercent(board.changePercent || 0)}</b>
+              </div>
+              <div class="sector-radar-chart">
+                ${renderSparkline(board.intraday || [])}
+              </div>
+              <div class="sector-radar-meta">
+                <span>上涨 ${board.upCount || 0} · 下跌 ${board.downCount || 0}</span>
+                <span>领涨 ${board.leadingStock || "--"}</span>
+              </div>
+              <div class="sector-radar-holdings">
+                ${
+                  board.intersections.length
+                    ? board.intersections.map((item) => `<span>${item.name} ${item.weight.toFixed(2)}% / ${formatPercent(item.changePercent || 0)}</span>`).join("")
+                    : "<span>暂无重仓交集</span>"
+                }
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">${radar.message}</div>`;
+}
+
+function renderSparkline(points) {
+  if (!points.length) return `<div class="sparkline-empty"></div>`;
+  const values = points.map((point) => point.close).filter((value) => Number.isFinite(value));
+  if (values.length < 2) return `<div class="sparkline-empty"></div>`;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const width = 220;
+  const height = 54;
+  const d = values
+    .map((value, index) => {
+      const x = (index / Math.max(1, values.length - 1)) * width;
+      const y = height - ((value - min) / (max - min || 1)) * height;
+      return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="板块分钟走势"><path d="${d}"></path></svg>`;
+}
+
 function renderStockTags(tagData) {
   state.stockTags = tagData.rows || [];
   if (!state.stockTags.some((row) => row.stockCode === state.selectedStockCode)) {
@@ -500,7 +582,7 @@ async function loadFund(code = state.selectedCode) {
   $("#chartStatus").textContent = "同步中";
 
   const fund = state.funds.find((item) => item.code === code) || (await fetchJson(`/api/funds?q=${encodeURIComponent(code)}`))[0];
-  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, stockTags, sectors, reports, insight, alerts] = await Promise.all([
+  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, stockTags, sectors, reports, insight, alerts, sourceCoverage, sectorRadar] = await Promise.all([
     fetchJson(`/api/funds/${code}/trend?range=${state.range}`),
     fetchJson(`/api/funds/${code}/sync-status`),
     fetchJson(`/api/funds/${code}/realtime`),
@@ -511,7 +593,9 @@ async function loadFund(code = state.selectedCode) {
     fetchJson(`/api/funds/${code}/sectors`),
     fetchJson(`/api/funds/${code}/reports`),
     fetchJson(`/api/funds/${code}/insight`),
-    fetchJson(`/api/funds/${code}/alerts`)
+    fetchJson(`/api/funds/${code}/alerts`),
+    fetchJson(`/api/funds/${code}/source-coverage`),
+    fetchJson(`/api/funds/${code}/sector-radar`)
   ]);
 
   state.trend = trend;
@@ -522,8 +606,10 @@ async function loadFund(code = state.selectedCode) {
   renderPeers(peers);
   renderHoldingChanges(holdingChanges);
   renderStockTags(stockTags);
+  renderSourceCoverage(sourceCoverage);
   renderSectors(sectors);
   renderReports(reports);
+  renderSectorRadar(sectorRadar);
   renderInsight(insight);
   const insightHistory = await fetchJson(`/api/funds/${code}/insights?limit=5`);
   renderInsightHistory(insightHistory);
@@ -736,6 +822,26 @@ async function syncCurrentFundNav() {
   }
 }
 
+async function syncCurrentFundRealData() {
+  if (!state.selectedCode) return;
+  const button = $("#syncRealDataButton");
+  button.disabled = true;
+  button.textContent = "同步中";
+  $("#sourceSyncStatus").textContent = "正在同步基金持仓与板块实时数据";
+  try {
+    const result = await fetchJson(`/api/funds/${state.selectedCode}/sync-all`, { method: "POST" });
+    $("#sourceSyncStatus").textContent = `真实数据同步完成：${result.quarter} · ${result.syncedHoldings} 条持仓`;
+    await loadFund(state.selectedCode);
+    await loadSyncRuns();
+  } catch (error) {
+    $("#sourceSyncStatus").textContent = "真实数据同步失败，请稍后重试";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "同步持仓/板块";
+  }
+}
+
 async function syncWatchlistNav() {
   const button = $("#syncWatchlistButton");
   button.disabled = true;
@@ -783,6 +889,7 @@ $("#removeFundButton").addEventListener("click", removeCurrentFund);
 $("#saveHoldingsButton").addEventListener("click", saveHoldings);
 $("#saveStockTagButton").addEventListener("click", saveStockTag);
 $("#syncNowButton").addEventListener("click", syncCurrentFundNav);
+$("#syncRealDataButton").addEventListener("click", syncCurrentFundRealData);
 $("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
 
 $("#stockTagSelect").addEventListener("change", (event) => {
