@@ -23,8 +23,11 @@ export function getDb() {
 
 export function initializeDatabase(database = getDb()) {
   createSchema(database);
+  migrateSchema(database);
   seedDatabase(database);
   backfillStockTags(database);
+  backfillResearchReportTargets(database);
+  seedResearchIntelligence(database);
   return database;
 }
 
@@ -116,10 +119,15 @@ function createSchema(database) {
     CREATE TABLE IF NOT EXISTS research_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sector TEXT NOT NULL,
+      target_type TEXT NOT NULL DEFAULT 'sector',
+      target_key TEXT NOT NULL DEFAULT '',
+      stock_code TEXT NOT NULL DEFAULT '',
+      track TEXT NOT NULL DEFAULT '',
       title TEXT NOT NULL,
       source TEXT NOT NULL,
       summary TEXT NOT NULL,
       view TEXT NOT NULL,
+      published_at TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT '本周更新'
     );
 
@@ -147,6 +155,21 @@ function createSchema(database) {
       synced_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+}
+
+function migrateSchema(database) {
+  const columns = new Set(database.prepare("PRAGMA table_info(research_reports)").all().map((column) => column.name));
+  const migrations = [
+    ["target_type", "ALTER TABLE research_reports ADD COLUMN target_type TEXT NOT NULL DEFAULT 'sector'"],
+    ["target_key", "ALTER TABLE research_reports ADD COLUMN target_key TEXT NOT NULL DEFAULT ''"],
+    ["stock_code", "ALTER TABLE research_reports ADD COLUMN stock_code TEXT NOT NULL DEFAULT ''"],
+    ["track", "ALTER TABLE research_reports ADD COLUMN track TEXT NOT NULL DEFAULT ''"],
+    ["published_at", "ALTER TABLE research_reports ADD COLUMN published_at TEXT NOT NULL DEFAULT ''"]
+  ];
+
+  for (const [column, sql] of migrations) {
+    if (!columns.has(column)) database.exec(sql);
+  }
 }
 
 function seedDatabase(database) {
@@ -234,6 +257,118 @@ function seedDatabase(database) {
     insertRule.run("top3-concentration", "前三重仓影响较强", "concentrationTop3", ">=", 30, "medium");
     insertRule.run("max-drawdown", "历史回撤较深", "maxDrawdown", "<=", -15, "medium");
 
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function backfillResearchReportTargets(database) {
+  database
+    .prepare(
+      `
+      UPDATE research_reports
+      SET
+        target_type = CASE WHEN target_type = '' THEN 'sector' ELSE target_type END,
+        target_key = CASE WHEN target_key = '' THEN sector ELSE target_key END,
+        published_at = CASE WHEN published_at = '' THEN updated_at ELSE published_at END
+      WHERE target_key = '' OR published_at = '' OR target_type = ''
+    `
+    )
+    .run();
+}
+
+function seedResearchIntelligence(database) {
+  const reports = [
+    {
+      sector: "食品饮料",
+      targetType: "track",
+      targetKey: "高端白酒",
+      stockCode: "",
+      track: "高端白酒",
+      title: "高端白酒批价稳定性跟踪",
+      source: "中原证券",
+      summary: "飞天批价、渠道库存和宴席需求是白酒持仓胜率的主要验证点。",
+      view: "谨慎乐观",
+      publishedAt: "2026-05-24"
+    },
+    {
+      sector: "食品饮料",
+      targetType: "stock",
+      targetKey: "600519",
+      stockCode: "600519",
+      track: "高端白酒",
+      title: "贵州茅台现金流与分红韧性跟踪",
+      source: "华东证券",
+      summary: "龙头渠道利润和分红预期仍具防御属性，短期弹性取决于批价企稳。",
+      view: "中性偏多",
+      publishedAt: "2026-05-23"
+    },
+    {
+      sector: "互联网",
+      targetType: "stock",
+      targetKey: "00700",
+      stockCode: "00700",
+      track: "AI应用",
+      title: "腾讯控股 AI 应用与广告效率更新",
+      source: "中信建投",
+      summary: "视频号广告、云服务和大模型工具化是利润率再评估的核心线索。",
+      view: "看多",
+      publishedAt: "2026-05-22"
+    },
+    {
+      sector: "电子",
+      targetType: "track",
+      targetKey: "半导体设备",
+      stockCode: "",
+      track: "半导体设备",
+      title: "半导体设备国产替代订单延续",
+      source: "国金证券",
+      summary: "晶圆厂资本开支结构继续向本土设备倾斜，设备龙头订单能见度较高。",
+      view: "看多",
+      publishedAt: "2026-05-21"
+    },
+    {
+      sector: "通信",
+      targetType: "track",
+      targetKey: "AI服务器",
+      stockCode: "",
+      track: "AI服务器",
+      title: "AI 服务器供应链景气度跟踪",
+      source: "广发证券",
+      summary: "海外云厂商资本开支仍在扩张，服务器链条订单和交付节奏保持高景气。",
+      view: "看多",
+      publishedAt: "2026-05-20"
+    }
+  ];
+
+  const insertReport = database.prepare(`
+    INSERT INTO research_reports (
+      sector, target_type, target_key, stock_code, track, title, source, summary, view, published_at, updated_at
+    )
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    WHERE NOT EXISTS (SELECT 1 FROM research_reports WHERE title = ?)
+  `);
+
+  database.exec("BEGIN");
+  try {
+    for (const report of reports) {
+      insertReport.run(
+        report.sector,
+        report.targetType,
+        report.targetKey,
+        report.stockCode,
+        report.track,
+        report.title,
+        report.source,
+        report.summary,
+        report.view,
+        report.publishedAt,
+        "本周更新",
+        report.title
+      );
+    }
     database.exec("COMMIT");
   } catch (error) {
     database.exec("ROLLBACK");

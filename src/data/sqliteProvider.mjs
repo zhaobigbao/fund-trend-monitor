@@ -354,17 +354,38 @@ export function upsertStockTagRecord(stockCode, input = {}) {
 
 export function listReportsBySectors(sectors) {
   if (!sectors.length) return [];
-  const placeholders = sectors.map(() => "?").join(", ");
+  return listReportsBySignals({ sectors });
+}
+
+export function listReportsBySignals({ sectors = [], tracks = [], stockCodes = [] } = {}) {
+  const sectorSet = new Set(sectors.filter(Boolean));
+  const trackSet = new Set(tracks.filter(Boolean));
+  const stockCodeSet = new Set(stockCodes.filter(Boolean));
+  if (!sectorSet.size && !trackSet.size && !stockCodeSet.size) return [];
+
   return getDb()
     .prepare(
       `
-      SELECT sector, title, source, summary, view, updated_at AS updatedAt
+      SELECT
+        id,
+        sector,
+        target_type AS targetType,
+        target_key AS targetKey,
+        stock_code AS stockCode,
+        track,
+        title,
+        source,
+        summary,
+        view,
+        published_at AS publishedAt,
+        updated_at AS updatedAt
       FROM research_reports
-      WHERE sector IN (${placeholders})
-      ORDER BY sector, id
+      ORDER BY id
     `
     )
-    .all(...sectors);
+    .all()
+    .map(normalizeResearchReport)
+    .filter((report) => isReportMatched(report, { sectorSet, trackSet, stockCodeSet }));
 }
 
 export function listNavHistory(code, limit = 60) {
@@ -581,6 +602,29 @@ function normalizeStockTagRecord(row) {
     source: row.source || "unknown",
     updatedAt: row.updatedAt || ""
   };
+}
+
+function normalizeResearchReport(row) {
+  return {
+    id: row.id,
+    sector: row.sector,
+    targetType: row.targetType || "sector",
+    targetKey: row.targetKey || row.sector,
+    stockCode: row.stockCode || "",
+    track: row.track || "",
+    title: row.title,
+    source: row.source,
+    summary: row.summary,
+    view: row.view,
+    publishedAt: row.publishedAt || "",
+    updatedAt: row.updatedAt || ""
+  };
+}
+
+function isReportMatched(report, { sectorSet, trackSet, stockCodeSet }) {
+  if (report.targetType === "stock") return stockCodeSet.has(report.stockCode || report.targetKey);
+  if (report.targetType === "track") return trackSet.has(report.track || report.targetKey);
+  return sectorSet.has(report.sector || report.targetKey);
 }
 
 function normalizeStockTagInput(stockCode, input = {}) {

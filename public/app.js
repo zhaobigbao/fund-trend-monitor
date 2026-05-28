@@ -340,10 +340,13 @@ function renderReports(reports) {
     .map(
       (report) => `
         <article class="report-card">
-          <div class="report-meta"><span>${report.sector}</span><span>热度 ${report.heat}</span></div>
+          <div class="report-meta"><span>${report.matchLabel || report.sector}</span><span>热度 ${report.heat}</span></div>
           <p class="report-title">${report.title}</p>
           <p class="report-summary">${report.summary}</p>
-          <div class="report-meta"><span>${report.source} · ${report.view}</span><span>${report.updatedAt}</span></div>
+          <div class="report-meta">
+            <span>${report.source} · ${report.view}</span>
+            <span>匹配权重 ${Number(report.matchWeight || 0).toFixed(2)}% · ${report.publishedAt || report.updatedAt}</span>
+          </div>
         </article>
       `
     )

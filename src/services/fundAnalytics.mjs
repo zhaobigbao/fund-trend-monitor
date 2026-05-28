@@ -7,7 +7,7 @@ import {
   listHoldingRows,
   listNavHistory,
   listPreviousHoldingRows,
-  listReportsBySectors,
+  listReportsBySignals,
   listWatchlistCodes,
   setWatchlistCode
 } from "../data/sqliteProvider.mjs";
@@ -247,11 +247,25 @@ export function buildPeerComparison(code) {
 }
 
 export function buildReports(code) {
-  const sectors = buildSectorExposure(code).map((item) => item.sector);
-  return listReportsBySectors(sectors).map((report) => ({
+  const holdings = buildHoldings(code);
+  const sectorWeight = new Map(buildSectorExposure(code).map((item) => [item.sector, item.weight]));
+  const stockWeight = new Map(holdings.rows.map((item) => [item.stockCode, item.weight]));
+  const trackWeight = holdings.rows.reduce((acc, item) => {
+    acc.set(item.track, Number(((acc.get(item.track) || 0) + item.weight).toFixed(2)));
+    return acc;
+  }, new Map());
+
+  return listReportsBySignals({
+    sectors: [...sectorWeight.keys()],
+    tracks: [...trackWeight.keys()],
+    stockCodes: [...stockWeight.keys()]
+  }).map((report) => ({
     ...report,
-    heat: Math.round(62 + seededNoise(report.sector.length, report.title.length) * 31)
-  }));
+    matchLabel: reportMatchLabel(report),
+    matchWeight: reportMatchWeight(report, { sectorWeight, trackWeight, stockWeight }),
+    heat: Math.round(reportHeatBase(report) + seededNoise(report.sector.length, report.title.length) * 18)
+  }))
+  .sort((a, b) => b.heat - a.heat || b.matchWeight - a.matchWeight);
 }
 
 export function buildAlerts(code) {
@@ -420,6 +434,24 @@ function scoreFund(fund, sameTopSector) {
   const volatilityPenalty = fund.volatility * 1.2;
   const sectorBonus = sameTopSector ? 3 : 0;
   return Math.round(Math.max(0, returnScore + drawdownScore - volatilityPenalty + sectorBonus));
+}
+
+function reportMatchLabel(report) {
+  if (report.targetType === "stock") return `个股 ${report.stockCode}`;
+  if (report.targetType === "track") return `赛道 ${report.track || report.targetKey}`;
+  return `行业 ${report.sector}`;
+}
+
+function reportMatchWeight(report, { sectorWeight, trackWeight, stockWeight }) {
+  if (report.targetType === "stock") return stockWeight.get(report.stockCode || report.targetKey) || 0;
+  if (report.targetType === "track") return trackWeight.get(report.track || report.targetKey) || 0;
+  return sectorWeight.get(report.sector || report.targetKey) || 0;
+}
+
+function reportHeatBase(report) {
+  if (report.targetType === "stock") return 76;
+  if (report.targetType === "track") return 70;
+  return 62;
 }
 
 function isRuleTriggered(rule, value) {
