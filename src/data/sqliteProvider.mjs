@@ -195,6 +195,60 @@ export function listPreviousHoldingRows(code, quarter) {
     .all(code, quarter);
 }
 
+export function replaceCurrentHoldings(code, disclosure, rows) {
+  const database = getDb();
+  const existingDisclosure = getHoldingDisclosure(code);
+  const normalizedRows = rows.map(normalizeHoldingInput).filter(Boolean).slice(0, 10);
+
+  const upsertDisclosure = database.prepare(`
+    INSERT INTO holding_disclosures (fund_code, quarter, disclosure_date, source)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(fund_code) DO UPDATE SET
+      quarter = excluded.quarter,
+      disclosure_date = excluded.disclosure_date,
+      source = excluded.source
+  `);
+
+  const deleteHoldings = database.prepare("DELETE FROM fund_holdings WHERE fund_code = ? AND quarter = ?");
+  const insertHolding = database.prepare(`
+    INSERT INTO fund_holdings (
+      fund_code, quarter, rank, name, stock_code, weight, sector, track, change_value, note
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const deletePrevious = database.prepare("DELETE FROM previous_fund_holdings WHERE fund_code = ? AND quarter = ?");
+  const insertPrevious = database.prepare(`
+    INSERT INTO previous_fund_holdings (fund_code, quarter, name, stock_code, weight)
+    SELECT fund_code, quarter, name, stock_code, weight
+    FROM fund_holdings
+    WHERE fund_code = ? AND quarter = ?
+  `);
+
+  database.exec("BEGIN");
+  try {
+    if (existingDisclosure?.quarter && existingDisclosure.quarter !== disclosure.quarter) {
+      deletePrevious.run(code, existingDisclosure.quarter);
+      insertPrevious.run(code, existingDisclosure.quarter);
+    }
+
+    upsertDisclosure.run(code, disclosure.quarter, disclosure.disclosureDate, disclosure.source);
+    deleteHoldings.run(code, disclosure.quarter);
+    normalizedRows.forEach((row, index) => {
+      insertHolding.run(code, disclosure.quarter, index + 1, row.name, row.stockCode, row.weight, row.sector, row.track, row.change, row.note);
+    });
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+
+  return {
+    fundCode: code,
+    ...disclosure,
+    rows: normalizedRows.map((row, index) => ({ rank: index + 1, ...row }))
+  };
+}
+
 export function listReportsBySectors(sectors) {
   if (!sectors.length) return [];
   const placeholders = sectors.map(() => "?").join(", ");
@@ -411,4 +465,26 @@ function serializeTags(value = "") {
     .filter(Boolean)
     .slice(0, 8)
     .join(",");
+}
+
+function normalizeHoldingInput(row = {}) {
+  const name = String(row.name || "").trim().slice(0, 40);
+  const stockCode = String(row.stockCode || row.code || "").trim().slice(0, 16);
+  if (!name || !stockCode) return null;
+
+  return {
+    name,
+    stockCode,
+    weight: clampNumber(row.weight, 0, 100),
+    sector: String(row.sector || "未分类").trim().slice(0, 24) || "未分类",
+    track: String(row.track || "待标注").trim().slice(0, 32) || "待标注",
+    change: clampNumber(row.change, -100, 100),
+    note: String(row.note || "").trim().slice(0, 80)
+  };
+}
+
+function clampNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.min(max, Math.max(min, Number(number.toFixed(2))));
 }

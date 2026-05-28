@@ -6,6 +6,7 @@ const state = {
   search: "",
   listMode: "all",
   externalResults: [],
+  holdings: null,
   searchTimer: null
 };
 
@@ -36,6 +37,19 @@ function activeFunds() {
 
 function tagsText(tags = []) {
   return Array.isArray(tags) ? tags.join("，") : "";
+}
+
+function defaultHoldingQuarter() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const currentQuarter = Math.ceil(month / 3);
+  let year = now.getFullYear();
+  let quarter = currentQuarter - 1;
+  if (quarter < 1) {
+    year -= 1;
+    quarter = 4;
+  }
+  return `${year}Q${quarter}`;
 }
 
 function renderFundList() {
@@ -183,6 +197,7 @@ function drawChart() {
 }
 
 function renderHoldings(holdingData) {
+  state.holdings = holdingData;
   $("#holdingQuarter").textContent = holdingData.quarter;
   $("#holdingMeta").textContent = `披露日期 ${holdingData.disclosureDate} · ${holdingData.source}`;
   $("#holdingSummary").textContent = `前三重仓 ${holdingData.concentrationTop3.toFixed(2)}% · 当前展示持仓合计 ${holdingData.concentrationTop10.toFixed(2)}%`;
@@ -201,6 +216,20 @@ function renderHoldings(holdingData) {
     )
     .join("")
     : `<tr><td colspan="5" class="table-empty">暂无持仓数据</td></tr>`;
+  renderHoldingEditor(holdingData);
+}
+
+function renderHoldingEditor(holdingData) {
+  const hasRows = holdingData.rows.length > 0;
+  $("#holdingQuarterInput").value = hasRows ? holdingData.quarter : defaultHoldingQuarter();
+  $("#holdingDateInput").value = /^\d{4}-\d{2}-\d{2}$/.test(holdingData.disclosureDate) ? holdingData.disclosureDate : "";
+  $("#holdingSourceInput").value = hasRows ? holdingData.source : "本地补录";
+  $("#holdingRowsInput").value = hasRows
+    ? holdingData.rows
+        .map((row) => [row.name, row.stockCode, row.weight, row.sector, row.track, row.change, row.note].join(","))
+        .join("\n")
+    : "";
+  $("#holdingEditStatus").textContent = hasRows ? `${holdingData.rows.length} 条持仓，可继续编辑` : "暂无持仓，可本地补录";
 }
 
 function renderSyncStatus(status) {
@@ -458,6 +487,57 @@ async function savePoolProfile() {
   }
 }
 
+function parseHoldingRows(text) {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(/\t|,|，/).map((part) => part.trim());
+      return {
+        name: parts[0] || "",
+        stockCode: parts[1] || "",
+        weight: Number(parts[2] || 0),
+        sector: parts[3] || "未分类",
+        track: parts[4] || "待标注",
+        change: Number(parts[5] || 0),
+        note: parts.slice(6).join("，")
+      };
+    })
+    .filter((row) => row.name && row.stockCode);
+}
+
+async function saveHoldings() {
+  if (!state.selectedCode) return;
+  const button = $("#saveHoldingsButton");
+  const rows = parseHoldingRows($("#holdingRowsInput").value);
+  button.disabled = true;
+  button.textContent = "保存中";
+  $("#holdingEditStatus").textContent = "正在保存持仓";
+  try {
+    const result = await fetchJson(`/api/funds/${state.selectedCode}/holdings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quarter: $("#holdingQuarterInput").value,
+        disclosureDate: $("#holdingDateInput").value,
+        source: $("#holdingSourceInput").value,
+        rows
+      })
+    });
+    if (!result.ok) throw new Error(result.error || "保存失败");
+    await loadFund(state.selectedCode);
+    await loadSyncRuns();
+    $("#holdingEditStatus").textContent = "持仓已保存";
+  } catch (error) {
+    $("#holdingEditStatus").textContent = "保存失败，请检查季度和持仓明细";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "保存持仓";
+  }
+}
+
 async function removeCurrentFund() {
   const fund = state.funds.find((item) => item.code === state.selectedCode);
   if (!fund) return;
@@ -571,6 +651,7 @@ $("#fundSearch").addEventListener("input", async (event) => {
 $("#watchToggle").addEventListener("click", toggleWatchlist);
 $("#savePoolProfileButton").addEventListener("click", savePoolProfile);
 $("#removeFundButton").addEventListener("click", removeCurrentFund);
+$("#saveHoldingsButton").addEventListener("click", saveHoldings);
 $("#syncNowButton").addEventListener("click", syncCurrentFundNav);
 $("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
 

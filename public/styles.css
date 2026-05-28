@@ -687,6 +687,73 @@ th:first-child {
   text-align: center;
 }
 
+.holding-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.holding-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.holding-editor label,
+.holding-rows-field {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.holding-editor input,
+.holding-editor textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fbfcff;
+  outline: none;
+  font: inherit;
+}
+
+.holding-editor input {
+  height: 36px;
+  padding: 0 10px;
+}
+
+.holding-editor textarea {
+  min-height: 116px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.holding-editor input:focus,
+.holding-editor textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.holding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.holding-actions small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.holding-actions .sync-button {
+  margin-bottom: 0;
+}
+
 .stock-code {
   display: block;
   margin-top: 2px;
@@ -939,6 +1006,7 @@ th:first-child {
 
   .metrics,
   .pool-form,
+  .holding-editor-grid,
   .grid-two,
   .research-row,
   .lower {
@@ -968,7 +1036,8 @@ th:first-child {
   }
 
   .pool-panel .section-head,
-  .pool-actions {
+  .pool-actions,
+  .holding-actions {
     align-items: stretch;
     flex-direction: column;
   }

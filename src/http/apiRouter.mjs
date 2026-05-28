@@ -14,6 +14,7 @@ import {
   updateWatchlist
 } from "../services/fundAnalytics.mjs";
 import { importExternalFund, listRecentSyncRuns, searchExternalFunds, syncFundNav, syncWatchlistNav } from "../services/fundImportService.mjs";
+import { updateFundHoldings } from "../services/fundHoldingService.mjs";
 import { removeFundFromPool, updateFundProfile } from "../services/fundPoolService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
@@ -77,6 +78,10 @@ export function createApiRouter() {
       if (req.method === "PATCH" && resource === "profile") {
         const body = await readJson(req);
         return json(res, updateFundProfile(code, body));
+      }
+      if (req.method === "PUT" && resource === "holdings") {
+        const body = await readJson(req);
+        return json(res, updateFundHoldings(code, body));
       }
       if (req.method !== "GET") return notFound(res);
       if (resource === "trend") return json(res, buildTrend(code, url.searchParams.get("range") || "1m"));

@@ -207,6 +207,30 @@
               </table>
             </div>
             <div id="holdingSummary" class="disclosure-line"></div>
+            <div class="holding-editor">
+              <div class="holding-editor-grid">
+                <label>
+                  <span>披露季度</span>
+                  <input id="holdingQuarterInput" type="text" maxlength="6" placeholder="2026Q1" />
+                </label>
+                <label>
+                  <span>披露日期</span>
+                  <input id="holdingDateInput" type="date" />
+                </label>
+                <label>
+                  <span>数据来源</span>
+                  <input id="holdingSourceInput" type="text" maxlength="40" placeholder="本地补录" />
+                </label>
+              </div>
+              <label class="holding-rows-field">
+                <span>持仓明细</span>
+                <textarea id="holdingRowsInput" rows="6" placeholder="贵州茅台,600519,9.8,白酒,高端消费,1.2,核心重仓"></textarea>
+              </label>
+              <div class="holding-actions">
+                <small id="holdingEditStatus">季度持仓信息</small>
+                <button id="saveHoldingsButton" class="sync-button" type="button">保存持仓</button>
+              </div>
+            </div>
           </div>
 
           <div class="panel">
