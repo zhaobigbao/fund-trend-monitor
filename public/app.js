@@ -413,9 +413,34 @@ function renderInsight(insight) {
   $("#confidence").textContent = `置信度 ${insight.confidence}`;
   $("#insightMeta").textContent = `${insight.generatedAt} 生成 · ${insight.dataScope}`;
   $("#insightHeadline").textContent = insight.headline;
-  $("#insightBullets").innerHTML = insight.bullets.map((item) => `<div class="insight-item">${item}</div>`).join("");
-  $("#actionList").innerHTML = insight.actions.map((item) => `<div class="action-item">${item}</div>`).join("");
-  $("#evidenceList").innerHTML = insight.evidence.map((item) => `<div class="evidence-item">${item}</div>`).join("");
+  const sections = insight.sections || {
+    trend: (insight.bullets || []).map((detail) => ({ title: "趋势", detail })),
+    risks: [],
+    evidence: (insight.evidence || []).map((detail) => ({ title: "证据", detail })),
+    watchpoints: (insight.actions || []).map((detail) => ({ title: "观察", detail }))
+  };
+  renderInsightItems("#trendInsightList", sections.trend, "trend");
+  renderInsightItems("#riskInsightList", sections.risks, "risk");
+  renderInsightItems("#evidenceInsightList", sections.evidence, "evidence");
+  renderInsightItems("#watchInsightList", sections.watchpoints, "watch");
+}
+
+function renderInsightItems(selector, items = [], type) {
+  $(selector).innerHTML = items.length
+    ? items
+        .map(
+          (item) => `
+            <article class="insight-item ${type} ${item.level || ""}">
+              <div>
+                <strong>${item.title}</strong>
+                <p>${item.detail}</p>
+              </div>
+              ${item.source || item.metric ? `<span>${item.source || item.metric}</span>` : ""}
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">暂无数据</div>`;
 }
 
 async function loadFunds() {
@@ -489,8 +514,12 @@ async function loadFund(code = state.selectedCode) {
 async function refreshRealtime() {
   if (!state.selectedCode) return;
   const fund = state.funds.find((item) => item.code === state.selectedCode);
-  const realtime = await fetchJson(`/api/funds/${state.selectedCode}/realtime`);
-  if (fund) renderMetrics(fund, realtime);
+  try {
+    const realtime = await fetchJson(`/api/funds/${state.selectedCode}/realtime`);
+    if (fund) renderMetrics(fund, realtime);
+  } catch (error) {
+    console.warn("Realtime refresh skipped", error);
+  }
 }
 
 async function toggleWatchlist() {

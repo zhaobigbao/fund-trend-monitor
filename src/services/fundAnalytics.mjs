@@ -337,44 +337,152 @@ export function buildInsight(code) {
   const holdings = buildHoldings(code);
   const holdingsList = holdings.rows;
   if (!holdingsList.length) {
-    return {
+    const sections = {
+      trend: [
+        {
+          title: "净值观察优先",
+          detail: "当前主要依据历史净值和基础资料观察阶段强弱，暂不做行业和重仓股归因。",
+          level: "medium"
+        }
+      ],
+      risks: [
+        {
+          title: "持仓证据不足",
+          detail: "缺少季报持仓后，行业暴露、赛道匹配和研报引用都不能形成完整证据链。",
+          level: "high"
+        }
+      ],
+      evidence: [
+        {
+          title: "基础资料",
+          detail: `基金基础信息更新时间：${fund.updateAt}`,
+          source: "funds"
+        },
+        {
+          title: "持仓状态",
+          detail: "尚未同步或补录季报持仓。",
+          source: "holding_disclosures"
+        }
+      ],
+      watchpoints: [
+        {
+          title: "补齐持仓",
+          detail: "优先同步或手工补录最近季度前十大持仓，再启用行业和研报判断。",
+          metric: "holding.rows"
+        },
+        {
+          title: "回撤区间",
+          detail: "继续观察净值走势和最大回撤是否扩大。",
+          metric: "maxDrawdown"
+        }
+      ]
+    };
+
+    return buildInsightPayload({
       headline: `${fund.name}已导入基金池，当前主要可观察净值走势，持仓与研报仍待同步。`,
       confidence: 45,
       generatedAt: formatGeneratedAt(),
       dataScope: "历史净值、基础基金信息",
-      bullets: [
-        "当前没有季报持仓数据，暂不生成行业暴露和持仓结构判断。",
-        "可以先用净值趋势观察阶段强弱，等待后续同步持仓和标签数据。",
-        "AI 结论置信度较低，因为证据链还不完整。"
-      ],
-      actions: ["优先同步历史净值并观察回撤区间。", "后续补充季报持仓后，再启用行业、赛道和研报分析。", "在持仓数据缺失前，不做同类风格归因判断。"],
-      evidence: [`基金基础信息来源：${fund.updateAt}`, "持仓数据：尚未同步", "研报观点样本：尚未匹配"]
-    };
+      sections
+    });
   }
   const positive = holdingsList.filter((item) => item.change > 0).length;
   const reportList = buildReports(code);
   const alerts = buildAlerts(code).filter((alert) => alert.level !== "low");
+  const primaryHolding = holdingsList[0];
+  const secondaryHolding = holdingsList[1] || holdingsList[0];
+  const momentumLabel = positive >= Math.ceil(holdingsList.length / 2) ? "改善" : "分化";
+  const topReports = reportList.slice(0, 2);
+  const sections = {
+    trend: [
+      {
+        title: fund.dailyChange >= 0 ? "净值趋势偏强" : "净值处于震荡观察",
+        detail:
+          fund.dailyChange >= 0
+            ? `当前估算变化为 ${formatPercent(fund.dailyChange)}，需要继续验证净值是否能维持在近月强势区间。`
+            : `当前估算变化为 ${formatPercent(fund.dailyChange)}，短期更适合观察回撤收敛和重仓股企稳情况。`,
+        level: fund.dailyChange >= 0 ? "positive" : "medium"
+      },
+      {
+        title: `持仓动量${momentumLabel}`,
+        detail: `前十大持仓中有 ${positive} 只近阶段表现为正，组合内部走势呈现${momentumLabel}特征。`,
+        level: positive >= 4 ? "positive" : "medium"
+      }
+    ],
+    risks: [
+      {
+        title: "头部持仓影响较强",
+        detail: `前三大持仓合计 ${holdings.concentrationTop3.toFixed(2)}%，净值对 ${primaryHolding.name} 与 ${secondaryHolding.name} 的弹性较高。`,
+        level: holdings.concentrationTop3 >= 30 ? "high" : "medium"
+      },
+      {
+        title: "行业集中度",
+        detail: `${topSector.sector} 暴露为 ${topSector.weight.toFixed(2)}%，需要跟踪相关赛道景气度和估值变化。`,
+        level: topSector.weight >= 35 ? "high" : "medium"
+      },
+      ...alerts.slice(0, 2).map((alert) => ({
+        title: alert.title,
+        detail: alert.message,
+        level: alert.level
+      }))
+    ],
+    evidence: [
+      {
+        title: "持仓披露",
+        detail: `${holdings.quarter} 披露日期 ${holdings.disclosureDate}，数据源：${holdings.source}`,
+        source: "holding_disclosures"
+      },
+      {
+        title: "第一大行业",
+        detail: `${topSector.sector} 权重 ${topSector.weight.toFixed(2)}%`,
+        source: "fund_holdings"
+      },
+      ...topReports.map((report) => ({
+        title: report.matchLabel,
+        detail: `${report.source}《${report.title}》：${report.summary}`,
+        source: "research_reports"
+      }))
+    ],
+    watchpoints: [
+      {
+        title: "重仓股同步",
+        detail: `优先跟踪 ${holdingsList.slice(0, 3).map((item) => item.name).join("、")} 的走势变化。`,
+        metric: "topHoldings"
+      },
+      {
+        title: "研报观点变化",
+        detail: topReports.length
+          ? `重点验证 ${topReports.map((report) => report.matchLabel).join("、")} 的观点是否从估值修复转向盈利兑现。`
+          : "当前暂无匹配研报，后续需补充行业、赛道或个股研报样本。",
+        metric: "report.matchLabel"
+      },
+      {
+        title: alerts.length ? "预警触发复核" : "预警规则观察",
+        detail: alerts.length ? "当前已有预警触发，需确认是否来自单一行业或头部持仓。" : "暂无高优先级预警，继续跟踪净值强弱和行业景气度。",
+        metric: "alerts"
+      }
+    ]
+  };
 
-  return {
+  return buildInsightPayload({
     headline: `${fund.name}当前趋势偏${fund.dailyChange >= 0 ? "强" : "震荡"}，核心观察点在${topSector.sector}配置延续性`,
     confidence: fund.dailyChange >= 0 ? 78 : 64,
     generatedAt: formatGeneratedAt(),
     dataScope: `${holdings.quarter} 持仓、盘中估值、${reportList.length} 条赛道研报摘要`,
-    bullets: [
-      `前十大持仓中有${positive}只近阶段表现为正，组合动量处在${positive >= 4 ? "改善" : "分化"}状态。`,
-      `前三大持仓合计占比${holdings.concentrationTop3.toFixed(2)}%，短期净值会明显受${holdingsList[0].name}与${holdingsList[1].name}影响。`,
-      `${topSector.sector}暴露为${topSector.weight.toFixed(2)}%，需要同步跟踪相关赛道研报中的库存、订单和估值变化。`
-    ],
-    actions: [
-      fund.dailyChange >= 0 ? "维持观察，等待净值突破近月高点后再提高仓位权重。" : "先看区间支撑，不急于追买，等待回撤后的成交确认。",
-      "把行业研报更新频率设为周度，重点看观点是否从估值修复转向盈利兑现。",
-      alerts.length ? "当前已有预警触发，先确认触发条件是否来自单一行业或头部持仓。" : "暂无高优先级预警，可继续跟踪行业景气度和净值强弱。"
-    ],
-    evidence: [
-      `${holdings.quarter} 披露日期 ${holdings.disclosureDate}，数据源：${holdings.source}`,
-      `第一大行业 ${topSector.sector}，权重 ${topSector.weight.toFixed(2)}%`,
-      `研报观点样本：${reportList.slice(0, 2).map((report) => `${report.source}《${report.title}》`).join("；")}`
-    ]
+    sections
+  });
+}
+
+function buildInsightPayload({ headline, confidence, generatedAt, dataScope, sections }) {
+  return {
+    headline,
+    confidence,
+    generatedAt,
+    dataScope,
+    sections,
+    bullets: sections.trend.map((item) => `${item.title}：${item.detail}`),
+    actions: sections.watchpoints.map((item) => `${item.title}：${item.detail}`),
+    evidence: sections.evidence.map((item) => `${item.title}：${item.detail}`)
   };
 }
 

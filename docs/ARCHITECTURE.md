@@ -234,6 +234,8 @@ API 应围绕业务资源拆分：
 - 本地补录持仓通过持仓管理服务写入 `holding_disclosures` 和 `fund_holdings`；如果录入新季度，旧的当前持仓会转入 `previous_fund_holdings` 作为调仓变化计算快照。
 - 持仓写入时会回填 `stocks` 和 `stock_sector_tags`，分析服务优先使用股票标签库中的行业和赛道，保留持仓原始字段作为披露快照。
 - 研报情报通过 `target_type`、`target_key`、`stock_code`、`track` 支持个股、赛道和行业多维匹配；前端必须展示匹配原因和匹配权重。
+- AI 结论接口输出结构化 `sections`，固定包含 `trend`、`risks`、`evidence`、`watchpoints` 四类；前端只按结构展示，不在页面层重新推导结论。
+- AI 结论需要保留 `bullets`、`actions`、`evidence` 兼容字段，方便旧页面、脚本或后续移动端逐步迁移。
 - 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
 ## 数据模型规划
@@ -251,6 +253,26 @@ API 应围绕业务资源拆分：
 - `ai_insights`：AI 分析结论
 - `watchlists`：用户自选基金
 - `alerts`：预警规则和触发记录
+
+## AI 结论结构
+
+`/api/funds/:code/insight` 当前由 `src/services/fundAnalytics.mjs` 基于净值、持仓、行业暴露、研报和预警规则生成结构化结论。接口字段约定：
+
+- `headline`：一句组合诊断摘要。
+- `confidence`：0-100 的置信度，数据缺失时必须降低。
+- `generatedAt`：生成时间，按 Asia/Shanghai 展示。
+- `dataScope`：本次结论使用的数据范围。
+- `sections.trend`：趋势判断，描述净值、持仓动量和阶段强弱。
+- `sections.risks`：风险提示，描述集中度、回撤、预警触发等。
+- `sections.evidence`：证据链，引用持仓披露、行业权重和研报样本。
+- `sections.watchpoints`：观察指标，给出后续应持续跟踪的数据项。
+
+实现约束：
+
+- 结论必须可解释，每条判断尽量关联具体数据来源、指标或研报匹配原因。
+- 不输出确定性买卖建议，不使用保证收益、必涨必跌等措辞；动作应表达为观察、验证、跟踪。
+- 缺少持仓时也要返回稳定结构，明确提示证据不足，而不是让接口失败。
+- 后续接入大模型时，大模型服务只能生成或润色结论，不能绕过服务层直接读取数据库或前端状态。
 
 ## 后台任务规划
 
