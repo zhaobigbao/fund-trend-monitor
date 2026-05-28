@@ -596,6 +596,101 @@ button {
   align-items: center;
 }
 
+.stock-tag-panel .section-head {
+  align-items: center;
+}
+
+.stock-tag-editor {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stock-tag-editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.stock-tag-editor input,
+.stock-tag-editor select {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fbfcff;
+  outline: none;
+  font: inherit;
+}
+
+.stock-tag-editor input:focus,
+.stock-tag-editor select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.stock-tag-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stock-tag-actions small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stock-tag-actions .sync-button {
+  margin-bottom: 0;
+}
+
+.stock-tag-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stock-tag-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.stock-tag-row.selected {
+  border-color: #a8c0e8;
+  background: #f7faff;
+}
+
+.stock-tag-row strong,
+.stock-tag-row b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.stock-tag-row span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.stock-tag-row > div:last-child {
+  text-align: right;
+}
+
 .sync-run-list {
   display: grid;
   gap: 10px;
@@ -1007,6 +1102,7 @@ th:first-child {
   .metrics,
   .pool-form,
   .holding-editor-grid,
+  .stock-tag-editor,
   .grid-two,
   .research-row,
   .lower {
@@ -1014,7 +1110,8 @@ th:first-child {
   }
 
   .pool-note-field,
-  .pool-actions {
+  .pool-actions,
+  .stock-tag-actions {
     grid-column: auto;
   }
 }
@@ -1037,7 +1134,8 @@ th:first-child {
 
   .pool-panel .section-head,
   .pool-actions,
-  .holding-actions {
+  .holding-actions,
+  .stock-tag-actions {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1065,12 +1163,14 @@ th:first-child {
 
   .peer-row,
   .change-row,
+  .stock-tag-row,
   .sync-run {
     grid-template-columns: 1fr;
   }
 
   .peer-metrics,
   .change-weight,
+  .stock-tag-row > div:last-child,
   .sync-run > div:last-child {
     text-align: left;
   }

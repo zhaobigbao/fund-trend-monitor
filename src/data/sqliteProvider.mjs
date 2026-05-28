@@ -171,11 +171,15 @@ export function listHoldingRows(code, quarter) {
     .prepare(
       `
       SELECT
-        rank, name, stock_code AS stockCode, weight, sector, track,
-        change_value AS change, note
-      FROM fund_holdings
-      WHERE fund_code = ? AND quarter = ?
-      ORDER BY rank
+        h.rank, h.name, h.stock_code AS stockCode, h.weight,
+        COALESCE(t.sector, h.sector) AS sector,
+        COALESCE(t.track, h.track) AS track,
+        h.change_value AS change,
+        h.note
+      FROM fund_holdings h
+      LEFT JOIN stock_sector_tags t ON t.stock_code = h.stock_code
+      WHERE h.fund_code = ? AND h.quarter = ?
+      ORDER BY h.rank
     `
     )
     .all(code, quarter);
@@ -223,6 +227,16 @@ export function replaceCurrentHoldings(code, disclosure, rows) {
     FROM fund_holdings
     WHERE fund_code = ? AND quarter = ?
   `);
+  const insertStock = database.prepare(`
+    INSERT INTO stocks (code, name, market, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(code) DO UPDATE SET
+      name = COALESCE(NULLIF(stocks.name, ''), excluded.name)
+  `);
+  const insertTag = database.prepare(`
+    INSERT OR IGNORE INTO stock_sector_tags (stock_code, sector, track, concepts, source)
+    VALUES (?, ?, ?, '', 'holding')
+  `);
 
   database.exec("BEGIN");
   try {
@@ -234,6 +248,8 @@ export function replaceCurrentHoldings(code, disclosure, rows) {
     upsertDisclosure.run(code, disclosure.quarter, disclosure.disclosureDate, disclosure.source);
     deleteHoldings.run(code, disclosure.quarter);
     normalizedRows.forEach((row, index) => {
+      insertStock.run(row.stockCode, row.name, inferMarket(row.stockCode));
+      insertTag.run(row.stockCode, row.sector, row.track);
       insertHolding.run(code, disclosure.quarter, index + 1, row.name, row.stockCode, row.weight, row.sector, row.track, row.change, row.note);
     });
     database.exec("COMMIT");
@@ -247,6 +263,93 @@ export function replaceCurrentHoldings(code, disclosure, rows) {
     ...disclosure,
     rows: normalizedRows.map((row, index) => ({ rank: index + 1, ...row }))
   };
+}
+
+export function listStockTagsByCodes(codes) {
+  const uniqueCodes = [...new Set(codes.filter(Boolean))];
+  if (!uniqueCodes.length) return [];
+  const placeholders = uniqueCodes.map(() => "?").join(", ");
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        s.code,
+        s.name,
+        s.market,
+        t.sector,
+        t.track,
+        COALESCE(t.concepts, '') AS concepts,
+        t.source,
+        t.updated_at AS updatedAt
+      FROM stocks s
+      LEFT JOIN stock_sector_tags t ON t.stock_code = s.code
+      WHERE s.code IN (${placeholders})
+      ORDER BY s.code
+    `
+    )
+    .all(...uniqueCodes)
+    .map(normalizeStockTagRecord);
+}
+
+export function listStockTagRecords(query = "") {
+  const keyword = query.trim().toLowerCase();
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        s.code,
+        s.name,
+        s.market,
+        t.sector,
+        t.track,
+        COALESCE(t.concepts, '') AS concepts,
+        t.source,
+        t.updated_at AS updatedAt
+      FROM stocks s
+      LEFT JOIN stock_sector_tags t ON t.stock_code = s.code
+      ORDER BY COALESCE(t.sector, '未分类'), s.code
+    `
+    )
+    .all()
+    .map(normalizeStockTagRecord)
+    .filter((item) => {
+      if (!keyword) return true;
+      return [item.code, item.name, item.sector, item.track, item.concepts.join(",")].some((value) => String(value).toLowerCase().includes(keyword));
+    });
+}
+
+export function upsertStockTagRecord(stockCode, input = {}) {
+  const normalized = normalizeStockTagInput(stockCode, input);
+  const database = getDb();
+  database
+    .prepare(
+      `
+      INSERT INTO stocks (code, name, market, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(code) DO UPDATE SET
+        name = CASE WHEN excluded.name <> '' THEN excluded.name ELSE stocks.name END,
+        market = CASE WHEN excluded.market <> '' THEN excluded.market ELSE stocks.market END,
+        updated_at = CURRENT_TIMESTAMP
+    `
+    )
+    .run(normalized.code, normalized.name, normalized.market);
+
+  database
+    .prepare(
+      `
+      INSERT INTO stock_sector_tags (stock_code, sector, track, concepts, source, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(stock_code) DO UPDATE SET
+        sector = excluded.sector,
+        track = excluded.track,
+        concepts = excluded.concepts,
+        source = excluded.source,
+        updated_at = CURRENT_TIMESTAMP
+    `
+    )
+    .run(normalized.code, normalized.sector, normalized.track, normalized.concepts, normalized.source);
+
+  return listStockTagsByCodes([normalized.code])[0];
 }
 
 export function listReportsBySectors(sectors) {
@@ -467,6 +570,32 @@ function serializeTags(value = "") {
     .join(",");
 }
 
+function normalizeStockTagRecord(row) {
+  return {
+    code: row.code,
+    name: row.name || "",
+    market: row.market || "",
+    sector: row.sector || "未分类",
+    track: row.track || "待标注",
+    concepts: parseTags(row.concepts),
+    source: row.source || "unknown",
+    updatedAt: row.updatedAt || ""
+  };
+}
+
+function normalizeStockTagInput(stockCode, input = {}) {
+  const code = String(stockCode || input.code || "").trim().slice(0, 16);
+  return {
+    code,
+    name: String(input.name || "").trim().slice(0, 40),
+    market: String(input.market || inferMarket(code)).trim().slice(0, 8),
+    sector: String(input.sector || "未分类").trim().slice(0, 24) || "未分类",
+    track: String(input.track || "待标注").trim().slice(0, 32) || "待标注",
+    concepts: serializeTags(input.concepts || ""),
+    source: String(input.source || "manual").trim().slice(0, 24) || "manual"
+  };
+}
+
 function normalizeHoldingInput(row = {}) {
   const name = String(row.name || "").trim().slice(0, 40);
   const stockCode = String(row.stockCode || row.code || "").trim().slice(0, 16);
@@ -487,4 +616,11 @@ function clampNumber(value, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
   return Math.min(max, Math.max(min, Number(number.toFixed(2))));
+}
+
+function inferMarket(stockCode) {
+  if (/^\d{5}$/.test(stockCode)) return "HK";
+  if (/^(6|9)/.test(stockCode)) return "SH";
+  if (/^(0|3|2)/.test(stockCode)) return "SZ";
+  return "";
 }

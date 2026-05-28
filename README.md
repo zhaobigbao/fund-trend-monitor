@@ -27,6 +27,7 @@ http://127.0.0.1:4173
 - 1周、1月、3月净值走势图
 - 上季度重仓股、披露日期、板块、赛道、阶段表现
 - 本地补录季度持仓，补齐导入基金的持仓分析入口
+- 股票标签库：维护重仓股行业、赛道和概念标签
 - 同类基金收益、回撤、波动和综合评分对比
 - 季度持仓变化追踪
 - 板块暴露权重
@@ -57,6 +58,7 @@ http://127.0.0.1:4173
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
 - `/api/funds/:code/holding-changes`
+- `/api/funds/:code/stock-tags`
 - `/api/funds/:code/sectors`
 - `/api/funds/:code/peers`
 - `/api/funds/:code/sync-status`
@@ -66,6 +68,8 @@ http://127.0.0.1:4173
 - `/api/funds/:code/alerts`
 - `/api/watchlists`
 - `/api/watchlists/sync-nav`
+- `/api/stocks`
+- `/api/stocks/:code/tags`
 - `/api/sync-runs`
 - `/api/alerts`
 

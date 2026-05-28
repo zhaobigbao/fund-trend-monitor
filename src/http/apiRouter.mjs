@@ -16,6 +16,7 @@ import {
 import { importExternalFund, listRecentSyncRuns, searchExternalFunds, syncFundNav, syncWatchlistNav } from "../services/fundImportService.mjs";
 import { updateFundHoldings } from "../services/fundHoldingService.mjs";
 import { removeFundFromPool, updateFundProfile } from "../services/fundPoolService.mjs";
+import { listFundStockTags, listStocks, updateStockTag } from "../services/stockTagService.mjs";
 import { json, notFound, readJson } from "./respond.mjs";
 
 export function createApiRouter() {
@@ -31,6 +32,20 @@ export function createApiRouter() {
 
     if (req.method === "GET" && path === "/api/sync-runs") {
       return json(res, listRecentSyncRuns(Number(url.searchParams.get("limit") || 12)));
+    }
+
+    if (req.method === "GET" && path === "/api/stocks") {
+      return json(res, listStocks(url.searchParams.get("q") || ""));
+    }
+
+    const stockTagMatch = path.match(/^\/api\/stocks\/([^/]+)\/tags$/);
+    if (stockTagMatch) {
+      const [, stockCode] = stockTagMatch;
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return json(res, updateStockTag(stockCode, body));
+      }
+      return notFound(res);
     }
 
     if (req.method === "GET" && path === "/api/fund-search") {
@@ -87,6 +102,7 @@ export function createApiRouter() {
       if (resource === "trend") return json(res, buildTrend(code, url.searchParams.get("range") || "1m"));
       if (resource === "holdings") return json(res, buildHoldings(code));
       if (resource === "holding-changes") return json(res, buildHoldingChanges(code));
+      if (resource === "stock-tags") return json(res, listFundStockTags(code));
       if (resource === "sectors") return json(res, buildSectorExposure(code));
       if (resource === "peers") return json(res, buildPeerComparison(code));
       if (resource === "sync-status") return json(res, buildSyncStatus(code));

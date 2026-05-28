@@ -24,6 +24,7 @@ export function getDb() {
 export function initializeDatabase(database = getDb()) {
   createSchema(database);
   seedDatabase(database);
+  backfillStockTags(database);
   return database;
 }
 
@@ -72,6 +73,22 @@ function createSchema(database) {
       change_value REAL NOT NULL,
       note TEXT NOT NULL,
       PRIMARY KEY (fund_code, quarter, stock_code)
+    );
+
+    CREATE TABLE IF NOT EXISTS stocks (
+      code TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      market TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS stock_sector_tags (
+      stock_code TEXT PRIMARY KEY REFERENCES stocks(code) ON DELETE CASCADE,
+      sector TEXT NOT NULL,
+      track TEXT NOT NULL,
+      concepts TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS fund_nav_history (
@@ -224,12 +241,57 @@ function seedDatabase(database) {
   }
 }
 
+function backfillStockTags(database) {
+  const rows = database
+    .prepare(
+      `
+      SELECT stock_code AS stockCode, name, sector, track
+      FROM fund_holdings
+      WHERE stock_code <> ''
+      ORDER BY fund_code, quarter, rank
+    `
+    )
+    .all();
+  if (!rows.length) return;
+
+  const insertStock = database.prepare(`
+    INSERT INTO stocks (code, name, market, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(code) DO UPDATE SET
+      name = COALESCE(NULLIF(stocks.name, ''), excluded.name)
+  `);
+
+  const insertTag = database.prepare(`
+    INSERT OR IGNORE INTO stock_sector_tags (stock_code, sector, track, concepts, source)
+    VALUES (?, ?, ?, '', 'holding')
+  `);
+
+  database.exec("BEGIN");
+  try {
+    for (const row of rows) {
+      insertStock.run(row.stockCode, row.name, inferMarket(row.stockCode));
+      insertTag.run(row.stockCode, row.sector || "未分类", row.track || "待标注");
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 function previousQuarterOf(quarter) {
   const match = quarter.match(/^(\d{4})Q([1-4])$/);
   if (!match) return "上一季度";
   const year = Number(match[1]);
   const q = Number(match[2]);
   return q === 1 ? `${year - 1}Q4` : `${year}Q${q - 1}`;
+}
+
+function inferMarket(stockCode) {
+  if (/^\d{5}$/.test(stockCode)) return "HK";
+  if (/^(6|9)/.test(stockCode)) return "SH";
+  if (/^(0|3|2)/.test(stockCode)) return "SZ";
+  return "";
 }
 
 export function databaseExists() {

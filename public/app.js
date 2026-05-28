@@ -7,6 +7,8 @@ const state = {
   listMode: "all",
   externalResults: [],
   holdings: null,
+  stockTags: [],
+  selectedStockCode: "",
   searchTimer: null
 };
 
@@ -349,6 +351,47 @@ function renderReports(reports) {
     : `<div class="empty-state">暂无匹配研报</div>`;
 }
 
+function renderStockTags(tagData) {
+  state.stockTags = tagData.rows || [];
+  if (!state.stockTags.some((row) => row.stockCode === state.selectedStockCode)) {
+    state.selectedStockCode = state.stockTags[0]?.stockCode || "";
+  }
+
+  $("#stockTagSummary").textContent = state.stockTags.length ? `${state.stockTags.length} 只` : "待补录";
+  $("#stockTagSelect").innerHTML = state.stockTags.length
+    ? state.stockTags.map((row) => `<option value="${row.stockCode}">${row.name} ${row.stockCode}</option>`).join("")
+    : `<option value="">暂无持仓股票</option>`;
+  $("#stockTagSelect").value = state.selectedStockCode;
+  $("#stockTagRows").innerHTML = state.stockTags.length
+    ? state.stockTags
+        .map(
+          (row) => `
+            <article class="stock-tag-row ${row.stockCode === state.selectedStockCode ? "selected" : ""}" data-stock-code="${row.stockCode}">
+              <div>
+                <strong>${row.name}</strong>
+                <span>${row.stockCode} · 权重 ${row.weight.toFixed(2)}% · ${row.tagSource}</span>
+              </div>
+              <div>
+                <b>${row.sector}</b>
+                <span>${row.track}${row.concepts.length ? ` · ${row.concepts.join("，")}` : ""}</span>
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">暂无持仓股票标签</div>`;
+  renderStockTagForm();
+}
+
+function renderStockTagForm() {
+  const row = state.stockTags.find((item) => item.stockCode === state.selectedStockCode);
+  $("#stockSectorInput").value = row?.sector || "";
+  $("#stockTrackInput").value = row?.track || "";
+  $("#stockConceptsInput").value = row?.concepts?.join("，") || "";
+  $("#stockTagStatus").textContent = row ? `标签来源 ${row.tagSource} · ${row.tagUpdatedAt || "待更新"}` : "当前持仓股票标签";
+  $("#saveStockTagButton").disabled = !row;
+}
+
 function renderAlerts(alerts) {
   $("#alertList").innerHTML = alerts
     .map(
@@ -410,13 +453,14 @@ async function loadFund(code = state.selectedCode) {
   $("#chartStatus").textContent = "同步中";
 
   const fund = state.funds.find((item) => item.code === code) || (await fetchJson(`/api/funds?q=${encodeURIComponent(code)}`))[0];
-  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, sectors, reports, insight, alerts] = await Promise.all([
+  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, stockTags, sectors, reports, insight, alerts] = await Promise.all([
     fetchJson(`/api/funds/${code}/trend?range=${state.range}`),
     fetchJson(`/api/funds/${code}/sync-status`),
     fetchJson(`/api/funds/${code}/realtime`),
     fetchJson(`/api/funds/${code}/holdings`),
     fetchJson(`/api/funds/${code}/peers`),
     fetchJson(`/api/funds/${code}/holding-changes`),
+    fetchJson(`/api/funds/${code}/stock-tags`),
     fetchJson(`/api/funds/${code}/sectors`),
     fetchJson(`/api/funds/${code}/reports`),
     fetchJson(`/api/funds/${code}/insight`),
@@ -430,6 +474,7 @@ async function loadFund(code = state.selectedCode) {
   renderHoldings(holdings);
   renderPeers(peers);
   renderHoldingChanges(holdingChanges);
+  renderStockTags(stockTags);
   renderSectors(sectors);
   renderReports(reports);
   renderInsight(insight);
@@ -535,6 +580,37 @@ async function saveHoldings() {
   } finally {
     button.disabled = false;
     button.textContent = "保存持仓";
+  }
+}
+
+async function saveStockTag() {
+  const row = state.stockTags.find((item) => item.stockCode === state.selectedStockCode);
+  if (!row) return;
+  const button = $("#saveStockTagButton");
+  button.disabled = true;
+  button.textContent = "保存中";
+  $("#stockTagStatus").textContent = "正在保存股票标签";
+  try {
+    const result = await fetchJson(`/api/stocks/${row.stockCode}/tags`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: row.name,
+        sector: $("#stockSectorInput").value,
+        track: $("#stockTrackInput").value,
+        concepts: $("#stockConceptsInput").value
+      })
+    });
+    if (!result.ok) throw new Error(result.error || "保存失败");
+    await loadFund(state.selectedCode);
+    await loadSyncRuns();
+    $("#stockTagStatus").textContent = "股票标签已保存";
+  } catch (error) {
+    $("#stockTagStatus").textContent = "保存失败，请稍后重试";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "保存股票标签";
   }
 }
 
@@ -652,8 +728,21 @@ $("#watchToggle").addEventListener("click", toggleWatchlist);
 $("#savePoolProfileButton").addEventListener("click", savePoolProfile);
 $("#removeFundButton").addEventListener("click", removeCurrentFund);
 $("#saveHoldingsButton").addEventListener("click", saveHoldings);
+$("#saveStockTagButton").addEventListener("click", saveStockTag);
 $("#syncNowButton").addEventListener("click", syncCurrentFundNav);
 $("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
+
+$("#stockTagSelect").addEventListener("change", (event) => {
+  state.selectedStockCode = event.target.value;
+  renderStockTags({ rows: state.stockTags });
+});
+
+$("#stockTagRows").addEventListener("click", (event) => {
+  const row = event.target.closest("[data-stock-code]");
+  if (!row) return;
+  state.selectedStockCode = row.dataset.stockCode;
+  renderStockTags({ rows: state.stockTags });
+});
 
 document.querySelectorAll(".list-mode").forEach((button) => {
   button.addEventListener("click", () => {

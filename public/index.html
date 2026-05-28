@@ -182,6 +182,39 @@
           <div id="syncRunList" class="sync-run-list"></div>
         </section>
 
+        <section class="panel stock-tag-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">股票标签库</p>
+              <h3>行业、赛道与概念</h3>
+            </div>
+            <span id="stockTagSummary" class="status-pill">--</span>
+          </div>
+          <div class="stock-tag-editor">
+            <label>
+              <span>股票</span>
+              <select id="stockTagSelect"></select>
+            </label>
+            <label>
+              <span>行业</span>
+              <input id="stockSectorInput" type="text" maxlength="24" placeholder="未分类" />
+            </label>
+            <label>
+              <span>赛道</span>
+              <input id="stockTrackInput" type="text" maxlength="32" placeholder="待标注" />
+            </label>
+            <label>
+              <span>概念</span>
+              <input id="stockConceptsInput" type="text" maxlength="80" placeholder="用逗号分隔，例如 AI,算力" />
+            </label>
+            <div class="stock-tag-actions">
+              <small id="stockTagStatus">当前持仓股票标签</small>
+              <button id="saveStockTagButton" class="sync-button" type="button">保存股票标签</button>
+            </div>
+          </div>
+          <div id="stockTagRows" class="stock-tag-list"></div>
+        </section>
+
         <section class="grid-two">
           <div class="panel">
             <div class="section-head">

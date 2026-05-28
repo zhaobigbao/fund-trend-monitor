@@ -151,6 +151,7 @@ API 应围绕业务资源拆分：
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
 - `/api/funds/:code/holding-changes`
+- `/api/funds/:code/stock-tags`
 - `/api/funds/:code/sectors`
 - `/api/funds/:code/peers`
 - `/api/funds/:code/sync-status`
@@ -160,6 +161,8 @@ API 应围绕业务资源拆分：
 - `/api/funds/:code/alerts`
 - `/api/watchlists`
 - `/api/watchlists/sync-nav`
+- `/api/stocks`
+- `/api/stocks/:code/tags`
 - `/api/sync-runs`
 - `/api/alerts`
 
@@ -182,6 +185,7 @@ API 应围绕业务资源拆分：
 - `src/services/fundImportService.mjs`：基金导入服务，负责外部搜索结果入库和初始净值同步。
 - `src/services/fundHoldingService.mjs`：持仓管理服务，负责本地季度持仓补录、校验和任务记录。
 - `src/services/fundPoolService.mjs`：基金池管理服务，负责本地分组、标签、备注和基金移除。
+- `src/services/stockTagService.mjs`：股票标签服务，负责股票基础信息、行业、赛道和概念标签维护。
 - `src/storage/database.mjs`：本地数据库 schema、建表和种子导入。
 - `src/http/apiRouter.mjs`：API 层，负责业务资源路由。
 - `src/http/staticFiles.mjs`：静态资源服务。
@@ -212,6 +216,7 @@ API 应围绕业务资源拆分：
 - 预警规则
 - 历史净值
 - 基金池管理信息：分组、标签、备注
+- 股票基础信息和行业/赛道/概念标签
 
 外部数据接入策略：
 
@@ -225,6 +230,7 @@ API 应围绕业务资源拆分：
 - 基金池管理信息存放在 `fund_pool_profiles`，与 `funds` 基础资料分离，避免外部基金资料刷新时覆盖用户本地观察信息。
 - 从本地基金池移除基金时，由数据层删除 `funds` 主记录，并依赖外键级联清理自选、净值、持仓、披露和基金池资料；无外键的同步记录由数据层同步清理。
 - 本地补录持仓通过持仓管理服务写入 `holding_disclosures` 和 `fund_holdings`；如果录入新季度，旧的当前持仓会转入 `previous_fund_holdings` 作为调仓变化计算快照。
+- 持仓写入时会回填 `stocks` 和 `stock_sector_tags`，分析服务优先使用股票标签库中的行业和赛道，保留持仓原始字段作为披露快照。
 - 正式产品需要确认外部数据源授权、调用频率和展示合规性。
 
 ## 数据模型规划
@@ -271,3 +277,4 @@ API 应围绕业务资源拆分：
 - 页面可以触发手动同步，但只能调用本项目 API，不能直接访问第三方数据源。
 - 最近同步记录来自 `sync_runs`，前端不得根据按钮点击自行伪造任务记录。
 - 本地持仓补录必须进入服务层校验和标准化后再入库，前端不得直接构造数据库形态。
+- 股票行业、赛道和概念标签必须通过股票标签服务维护，持仓行不再作为唯一标签来源。
