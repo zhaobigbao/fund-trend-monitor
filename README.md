@@ -44,6 +44,7 @@ http://127.0.0.1:4173
 开发新功能前先阅读：
 
 - `docs/ARCHITECTURE.md`：整体架构设计规范，维护模块边界、接口规划和架构决策。
+- `docs/DATA_SOURCE_STRATEGY.md`：真实数据源策略与切换设计，维护候选数据源、板块实时走势和数据源中心规划。
 - `docs/DEV_PRACTICES.md`：开发实践经验总结，维护 coding 过程中的问题和可复用实现。
 
 ## 后续接入真实数据
