@@ -1347,7 +1347,8 @@ th:first-child {
 }
 
 .sector-radar-head,
-.sector-radar-meta {
+.sector-radar-meta,
+.sector-radar-match {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1361,10 +1362,27 @@ th:first-child {
 }
 
 .sector-radar-head span,
-.sector-radar-meta span {
+.sector-radar-meta span,
+.sector-radar-match span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.sector-radar-match {
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: #f6f8fb;
+}
+
+.sector-radar-match span:first-child {
+  min-width: 0;
+}
+
+.sector-radar-match span:last-child {
+  color: #334155;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .sector-radar-head b {

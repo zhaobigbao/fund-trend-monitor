@@ -434,6 +434,10 @@ function renderSectorRadar(radar) {
                 <span>上涨 ${board.upCount || 0} · 下跌 ${board.downCount || 0}</span>
                 <span>领涨 ${board.leadingStock || "--"}</span>
               </div>
+              <div class="sector-radar-match">
+                <span>命中 ${board.matchedTerms?.length ? board.matchedTerms.join(" / ") : "--"}</span>
+                <span>持仓交集 ${Number(board.intersectionWeight || 0).toFixed(2)}%</span>
+              </div>
               <div class="sector-radar-holdings">
                 ${
                   board.intersections.length

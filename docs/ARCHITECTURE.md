@@ -248,6 +248,10 @@ API 应围绕业务资源拆分：
 
 基金级数据源绑定通过 `/api/funds/:code/source-bindings` 保存。前端只提交业务域到 source id 的映射，服务层负责校验该 source 是否启用、是否支持对应业务域。
 
+板块实时雷达的候选板块由服务层根据持仓行业、赛道、别名关键词和持仓权重统一打分。前端只展示服务层返回的命中关键词、持仓交集权重、板块涨跌和分钟走势，不在浏览器侧重新排序或推导。
+
+当外部实时板块源不可用时，`sectorRadarService` 应优先读取 `sector_realtime_quotes`、`sector_constituents`、`sector_intraday_points` 的最近缓存，页面需明确提示“实时源暂不可用，展示缓存”，不能直接让雷达空白。
+
 ## 数据底座
 
 当前本地数据库文件为 `data/fund-radar.sqlite`，属于运行时数据，不提交到 Git。

@@ -693,6 +693,79 @@ export function replaceSectorIntradayPoints(sourceId, sectorCode, period, points
   }
 }
 
+export function listSectorRealtimeQuoteRecords(sourceId) {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        source_id AS sourceId,
+        sector_code AS code,
+        sector_name AS name,
+        sector_type AS type,
+        latest_price AS latestPrice,
+        change_percent AS changePercent,
+        turnover_rate AS turnoverRate,
+        up_count AS upCount,
+        down_count AS downCount,
+        leading_stock AS leadingStock,
+        leading_stock_code AS leadingStockCode,
+        quoted_at AS quotedAt
+      FROM sector_realtime_quotes
+      WHERE source_id = ?
+      ORDER BY quoted_at DESC, sector_code
+    `
+    )
+    .all(sourceId);
+}
+
+export function listSectorConstituentRecords(sourceId, sectorCodes) {
+  if (!sectorCodes.length) return [];
+  const placeholders = sectorCodes.map(() => "?").join(",");
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        source_id AS sourceId,
+        sector_code AS sectorCode,
+        sector_name AS sectorName,
+        stock_code AS stockCode,
+        stock_name AS stockName,
+        latest_price AS latestPrice,
+        change_percent AS changePercent,
+        updated_at AS updatedAt
+      FROM sector_constituents
+      WHERE source_id = ? AND sector_code IN (${placeholders})
+      ORDER BY sector_code, stock_code
+    `
+    )
+    .all(sourceId, ...sectorCodes);
+}
+
+export function listSectorIntradayPointRecords(sourceId, sectorCodes, period = "1d") {
+  if (!sectorCodes.length) return [];
+  const placeholders = sectorCodes.map(() => "?").join(",");
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        source_id AS sourceId,
+        sector_code AS sectorCode,
+        period,
+        point_time AS time,
+        open,
+        close,
+        high,
+        low,
+        volume,
+        amount
+      FROM sector_intraday_points
+      WHERE source_id = ? AND period = ? AND sector_code IN (${placeholders})
+      ORDER BY sector_code, point_time
+    `
+    )
+    .all(sourceId, period, ...sectorCodes);
+}
+
 export function saveAiInsightRecord(code, insight) {
   const latest = getLatestAiInsightRecord(code);
   if (latest?.signature === insight.signature) return latest;
