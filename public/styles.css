@@ -27,6 +27,10 @@ body {
   background: var(--page);
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 button {
   font: inherit;
 }
@@ -313,6 +317,23 @@ button {
   white-space: nowrap;
 }
 
+.sync-entry-button {
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid #1e54c8;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 800;
+  background: var(--blue);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sync-entry-button:hover {
+  background: #1f55d4;
+}
+
 .watch-button:hover {
   border-color: #b9c7da;
 }
@@ -586,21 +607,19 @@ button {
   cursor: pointer;
 }
 
+.sync-button.secondary {
+  color: var(--blue);
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
 .sync-button:disabled {
   color: var(--muted);
   background: #eef2f7;
   cursor: wait;
 }
 
-.task-panel .section-head {
-  align-items: center;
-}
-
 .stock-tag-panel .section-head {
-  align-items: center;
-}
-
-.data-source-panel .section-head {
   align-items: center;
 }
 
@@ -777,6 +796,128 @@ button {
   text-align: right;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.sync-modal {
+  width: min(1120px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid rgba(219, 226, 234, 0.9);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+}
+
+.modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.modal-head h3,
+.modal-head p,
+.sync-modal-block-head h4,
+.sync-modal-block-head p {
+  margin: 0;
+}
+
+.modal-head h3 {
+  margin-top: 3px;
+  font-size: 22px;
+}
+
+.modal-close-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  background: #fff;
+  cursor: pointer;
+}
+
+.modal-close-button:hover {
+  color: var(--ink);
+  border-color: #b9c7da;
+}
+
+.sync-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 24px 0;
+}
+
+.sync-modal-actions .sync-button {
+  height: 38px;
+  margin-bottom: 0;
+}
+
+.sync-modal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  gap: 18px;
+  padding: 18px 24px 24px;
+}
+
+.sync-modal-block {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 520px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcff;
+}
+
+.sync-modal-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sync-modal-block-head h4 {
+  margin-top: 3px;
+  font-size: 18px;
+}
+
+.sync-modal .source-coverage-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.sync-modal .sync-run-list {
+  max-height: 460px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .grid-two {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
@@ -784,12 +925,18 @@ button {
   align-items: start;
 }
 
+.analysis-flow {
+  display: grid;
+  gap: 18px;
+}
+
 .research-row {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .lower {
-  grid-template-columns: minmax(280px, 0.8fr) minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .report-panel {
@@ -926,6 +1073,13 @@ th:first-child {
   font-weight: 800;
 }
 
+.insight-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+
 .insight-sections,
 .insight-list,
 .report-list,
@@ -1008,10 +1162,10 @@ th:first-child {
 
 .insight-history {
   display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  gap: 8px;
+  align-self: stretch;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
 }
 
 .insight-history-head,
@@ -1025,7 +1179,7 @@ th:first-child {
 .insight-history-head h4 {
   margin: 0;
   color: #324154;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
 }
 
@@ -1037,12 +1191,25 @@ th:first-child {
 
 .insight-history-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
 }
 
 .insight-history-item {
-  padding: 10px 0;
+  position: relative;
+  padding: 12px 0;
   border-bottom: 1px solid #edf1f5;
+}
+
+.insight-history-item::before {
+  position: absolute;
+  top: 18px;
+  left: -21px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #dce7f4;
+  border-radius: 50%;
+  background: var(--surface);
+  content: "";
 }
 
 .insight-history-item:last-child {
@@ -1050,11 +1217,14 @@ th:first-child {
 }
 
 .insight-history-item strong {
-  display: block;
+  display: -webkit-box;
   margin-bottom: 3px;
   color: #263341;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .insight-history-item span {
@@ -1064,8 +1234,14 @@ th:first-child {
 }
 
 .insight-history-item b {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
   color: var(--teal);
   font-size: 12px;
+  background: #eef8f5;
   white-space: nowrap;
 }
 
@@ -1086,6 +1262,26 @@ th:first-child {
 .sector-radar-list {
   display: grid;
   gap: 10px;
+}
+
+.summary-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 360px;
+  overflow: hidden;
+}
+
+.summary-panel.radar-panel {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.summary-panel .alert-list,
+.summary-panel .sector-bars,
+.summary-panel .sector-radar-list {
+  min-height: 0;
+  align-content: start;
+  overflow: auto;
+  padding-right: 3px;
 }
 
 .sector-radar-card {
@@ -1350,6 +1546,21 @@ th:first-child {
   .grid-two,
   .research-row,
   .lower {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-panel {
+    height: auto;
+    overflow: visible;
+  }
+
+  .summary-panel .alert-list,
+  .summary-panel .sector-bars,
+  .summary-panel .sector-radar-list {
+    overflow: visible;
+  }
+
+  .insight-body {
     grid-template-columns: 1fr;
   }
 

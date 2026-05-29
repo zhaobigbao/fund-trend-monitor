@@ -43,6 +43,7 @@
             <h2 id="fundName">加载中</h2>
           </div>
           <div class="top-actions">
+            <button id="openSyncModalButton" class="sync-entry-button" type="button">数据同步</button>
             <button id="watchToggle" class="watch-button" type="button">加自选</button>
             <div class="range-tabs" role="tablist" aria-label="走势范围">
               <button class="range-button active" data-range="1w">1周</button>
@@ -113,18 +114,6 @@
           </div>
         </section>
 
-        <section class="panel data-source-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">数据源中心</p>
-              <h3>来源覆盖与真实数据同步</h3>
-            </div>
-            <button id="syncRealDataButton" class="sync-button" type="button">同步持仓/板块</button>
-          </div>
-          <div id="sourceCoverageRows" class="source-coverage-list"></div>
-          <div id="sourceSyncStatus" class="disclosure-line">数据源覆盖状态</div>
-        </section>
-
         <section class="chart-panel">
           <div class="section-head">
             <div>
@@ -152,7 +141,6 @@
             </div>
           </div>
           <div id="syncMessage" class="sync-message"></div>
-          <button id="syncNowButton" class="sync-button" type="button">同步净值</button>
           <canvas id="trendChart" width="1100" height="360" aria-label="基金走势图"></canvas>
         </section>
 
@@ -180,18 +168,6 @@
             <div id="changeSummary" class="disclosure-line"></div>
             <div id="holdingChangeRows" class="change-list"></div>
           </div>
-        </section>
-
-        <section class="panel task-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">数据任务</p>
-              <h3>同步记录</h3>
-            </div>
-            <button id="syncWatchlistButton" class="sync-button" type="button">同步全部自选</button>
-          </div>
-          <div id="syncTaskSummary" class="disclosure-line">最近同步任务</div>
-          <div id="syncRunList" class="sync-run-list"></div>
         </section>
 
         <section class="panel stock-tag-panel">
@@ -227,8 +203,8 @@
           <div id="stockTagRows" class="stock-tag-list"></div>
         </section>
 
-        <section class="grid-two">
-          <div class="panel">
+        <section class="analysis-flow">
+          <div class="panel holding-panel">
             <div class="section-head">
               <div>
                 <p class="eyebrow">上季度持仓</p>
@@ -278,7 +254,7 @@
             </div>
           </div>
 
-          <div class="panel">
+          <div class="panel insight-panel">
             <div class="section-head">
               <div>
                 <p class="eyebrow">AI 趋势结论</p>
@@ -286,38 +262,42 @@
               </div>
               <span id="confidence" class="status-pill">--</span>
             </div>
-            <div id="insightMeta" class="disclosure-line"></div>
-            <p id="insightHeadline" class="insight-headline"></p>
-            <div class="insight-sections">
-              <section class="insight-section">
-                <h4>趋势判断</h4>
-                <div id="trendInsightList" class="insight-list"></div>
-              </section>
-              <section class="insight-section">
-                <h4>风险提示</h4>
-                <div id="riskInsightList" class="insight-list"></div>
-              </section>
-              <section class="insight-section">
-                <h4>证据链</h4>
-                <div id="evidenceInsightList" class="insight-list"></div>
-              </section>
-              <section class="insight-section">
-                <h4>观察指标</h4>
-                <div id="watchInsightList" class="insight-list"></div>
-              </section>
-            </div>
-            <div class="insight-history">
-              <div class="insight-history-head">
-                <h4>历史回看</h4>
-                <span id="insightHistorySummary">--</span>
+            <div class="insight-body">
+              <div class="insight-current">
+                <div id="insightMeta" class="disclosure-line"></div>
+                <p id="insightHeadline" class="insight-headline"></p>
+                <div class="insight-sections">
+                  <section class="insight-section">
+                    <h4>趋势判断</h4>
+                    <div id="trendInsightList" class="insight-list"></div>
+                  </section>
+                  <section class="insight-section">
+                    <h4>风险提示</h4>
+                    <div id="riskInsightList" class="insight-list"></div>
+                  </section>
+                  <section class="insight-section">
+                    <h4>证据链</h4>
+                    <div id="evidenceInsightList" class="insight-list"></div>
+                  </section>
+                  <section class="insight-section">
+                    <h4>观察指标</h4>
+                    <div id="watchInsightList" class="insight-list"></div>
+                  </section>
+                </div>
               </div>
-              <div id="insightHistoryList" class="insight-history-list"></div>
+              <div class="insight-history">
+                <div class="insight-history-head">
+                  <h4>历史回看</h4>
+                  <span id="insightHistorySummary">--</span>
+                </div>
+                <div id="insightHistoryList" class="insight-history-list"></div>
+              </div>
             </div>
           </div>
         </section>
 
         <section class="grid-two lower">
-          <div class="panel">
+          <div class="panel summary-panel alert-panel">
             <div class="section-head">
               <div>
                 <p class="eyebrow">预警中心</p>
@@ -327,7 +307,7 @@
             <div id="alertList" class="alert-list"></div>
           </div>
 
-          <div class="panel">
+          <div class="panel summary-panel exposure-panel">
             <div class="section-head">
               <div>
                 <p class="eyebrow">板块暴露</p>
@@ -337,7 +317,7 @@
             <div id="sectorBars" class="sector-bars"></div>
           </div>
 
-          <div class="panel">
+          <div class="panel summary-panel radar-panel">
             <div class="section-head">
               <div>
                 <p class="eyebrow">板块实时雷达</p>
@@ -360,6 +340,45 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <div id="syncModal" class="modal-backdrop" hidden>
+      <section class="sync-modal" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">数据同步</p>
+            <h3 id="syncModalTitle">数据源与同步记录</h3>
+          </div>
+          <button id="closeSyncModalButton" class="modal-close-button" type="button" aria-label="关闭同步弹窗">×</button>
+        </div>
+        <div class="sync-modal-actions" aria-label="同步操作">
+          <button id="syncRealDataButton" class="sync-button" type="button">同步持仓/板块</button>
+          <button id="syncNowButton" class="sync-button secondary" type="button">同步净值</button>
+          <button id="syncWatchlistButton" class="sync-button secondary" type="button">同步全部自选</button>
+        </div>
+        <div class="sync-modal-grid">
+          <section class="sync-modal-block">
+            <div class="sync-modal-block-head">
+              <div>
+                <p class="eyebrow">数据源中心</p>
+                <h4>来源覆盖与真实数据同步</h4>
+              </div>
+            </div>
+            <div id="sourceCoverageRows" class="source-coverage-list"></div>
+            <div id="sourceSyncStatus" class="disclosure-line">数据源覆盖状态</div>
+          </section>
+          <section class="sync-modal-block">
+            <div class="sync-modal-block-head">
+              <div>
+                <p class="eyebrow">数据任务</p>
+                <h4>同步记录</h4>
+              </div>
+            </div>
+            <div id="syncTaskSummary" class="disclosure-line">最近同步任务</div>
+            <div id="syncRunList" class="sync-run-list"></div>
+          </section>
+        </div>
+      </section>
     </div>
 
     <script src="/app.js"></script>

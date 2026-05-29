@@ -575,6 +575,23 @@ async function loadSyncRuns() {
   renderSyncRuns(runs);
 }
 
+function openSyncModal() {
+  const modal = $("#syncModal");
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+  $("#closeSyncModalButton").focus();
+  loadSyncRuns().catch((error) => {
+    $("#syncTaskSummary").textContent = "同步记录加载失败，请稍后重试";
+    console.error(error);
+  });
+}
+
+function closeSyncModal() {
+  $("#syncModal").hidden = true;
+  document.body.classList.remove("modal-open");
+  $("#openSyncModalButton").focus();
+}
+
 async function loadFund(code = state.selectedCode) {
   if (!code) return;
   state.selectedCode = code;
@@ -891,6 +908,15 @@ $("#saveStockTagButton").addEventListener("click", saveStockTag);
 $("#syncNowButton").addEventListener("click", syncCurrentFundNav);
 $("#syncRealDataButton").addEventListener("click", syncCurrentFundRealData);
 $("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
+$("#openSyncModalButton").addEventListener("click", openSyncModal);
+$("#closeSyncModalButton").addEventListener("click", closeSyncModal);
+$("#syncModal").addEventListener("click", (event) => {
+  if (event.target === $("#syncModal")) closeSyncModal();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#syncModal").hidden) closeSyncModal();
+});
 
 $("#stockTagSelect").addEventListener("change", (event) => {
   state.selectedStockCode = event.target.value;
