@@ -791,6 +791,10 @@ button {
   grid-template-columns: minmax(280px, 0.8fr) minmax(280px, 0.8fr) minmax(0, 1.2fr);
 }
 
+.report-panel {
+  grid-column: 1 / -1;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -1189,6 +1193,10 @@ th:first-child {
   background: #fff;
 }
 
+.report-panel .report-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .report-title {
   margin: 0;
   font-weight: 800;
@@ -1337,6 +1345,7 @@ th:first-child {
   .holding-editor-grid,
   .stock-tag-editor,
   .source-coverage-list,
+  .report-panel .report-list,
   .grid-two,
   .research-row,
   .lower {
