@@ -391,22 +391,138 @@ function seedDataSources(database) {
     VALUES (?, ?)
   `);
 
-  const eastmoneyCapabilities = {
-    fundSearch: true,
-    fundNav: true,
-    fundHoldings: true,
-    stockTags: false,
-    industryBoards: true,
-    conceptBoards: true,
-    boardIntraday: true,
-    researchReports: false
-  };
+  const sourceRows = [
+    {
+      id: "eastmoney",
+      name: "东方财富公开数据",
+      kind: "public",
+      enabled: 1,
+      priority: 10,
+      capabilities: {
+        fundSearch: true,
+        fundNav: true,
+        fundHoldings: true,
+        stockTags: false,
+        industryBoards: true,
+        conceptBoards: true,
+        boardIntraday: true,
+        researchReports: false
+      }
+    },
+    {
+      id: "local",
+      name: "本地标签与研报库",
+      kind: "local",
+      enabled: 1,
+      priority: 20,
+      capabilities: {
+        fundSearch: false,
+        fundNav: false,
+        fundHoldings: false,
+        stockTags: true,
+        industryBoards: false,
+        conceptBoards: false,
+        boardIntraday: false,
+        researchReports: true
+      }
+    },
+    {
+      id: "akshare",
+      name: "AKShare 公开封装",
+      kind: "public",
+      enabled: 0,
+      priority: 30,
+      capabilities: {
+        fundSearch: true,
+        fundNav: true,
+        fundHoldings: true,
+        stockTags: false,
+        industryBoards: true,
+        conceptBoards: true,
+        boardIntraday: true,
+        researchReports: false
+      }
+    },
+    {
+      id: "tushare",
+      name: "Tushare Pro",
+      kind: "token",
+      enabled: 0,
+      priority: 40,
+      capabilities: {
+        fundSearch: true,
+        fundNav: true,
+        fundHoldings: true,
+        stockTags: false,
+        industryBoards: false,
+        conceptBoards: false,
+        boardIntraday: false,
+        researchReports: false
+      }
+    },
+    {
+      id: "ifind",
+      name: "同花顺 iFinD",
+      kind: "commercial",
+      enabled: 0,
+      priority: 50,
+      capabilities: {
+        fundSearch: true,
+        fundNav: true,
+        fundHoldings: true,
+        stockTags: true,
+        industryBoards: true,
+        conceptBoards: true,
+        boardIntraday: true,
+        researchReports: true
+      }
+    },
+    {
+      id: "wind",
+      name: "Wind",
+      kind: "commercial",
+      enabled: 0,
+      priority: 60,
+      capabilities: {
+        fundSearch: true,
+        fundNav: true,
+        fundHoldings: true,
+        stockTags: true,
+        industryBoards: true,
+        conceptBoards: true,
+        boardIntraday: true,
+        researchReports: true
+      }
+    },
+    {
+      id: "choice",
+      name: "Choice 金融终端",
+      kind: "commercial",
+      enabled: 0,
+      priority: 70,
+      capabilities: {
+        fundSearch: true,
+        fundNav: true,
+        fundHoldings: true,
+        stockTags: true,
+        industryBoards: true,
+        conceptBoards: true,
+        boardIntraday: true,
+        researchReports: true
+      }
+    }
+  ];
 
-  insertSource.run("eastmoney", "东方财富公开数据", "public", 1, 10, JSON.stringify(eastmoneyCapabilities), "{}", "unknown", "");
+  for (const source of sourceRows) {
+    insertSource.run(source.id, source.name, source.kind, source.enabled, source.priority, JSON.stringify(source.capabilities), "{}", "unknown", "");
+  }
+
   insertDefault.run("fund", "eastmoney");
   insertDefault.run("fundNav", "eastmoney");
   insertDefault.run("fundHoldings", "eastmoney");
+  insertDefault.run("stockTags", "local");
   insertDefault.run("sectorBoard", "eastmoney");
+  insertDefault.run("researchReports", "local");
 }
 
 function seedResearchIntelligence(database) {

@@ -240,6 +240,14 @@ API 应围绕业务资源拆分：
 
 后续如果接入多数据源，应优先新增数据源 adapter、source selection service 和同步任务，再扩展前端数据源中心。
 
+当前数据源中心采用“已接入源 + 候选源”矩阵：
+
+- `eastmoney`：已接入，支撑基金基础、净值、季度持仓、行业/概念板块和分钟走势。
+- `local`：已接入，支撑本地股票标签和本地研报摘要。
+- `akshare`、`tushare`、`ifind`、`wind`、`choice`：候选源，先进入能力矩阵和 UI 候选项；未配置 adapter/token/SDK 前不能被用户选为当前基金来源。
+
+基金级数据源绑定通过 `/api/funds/:code/source-bindings` 保存。前端只提交业务域到 source id 的映射，服务层负责校验该 source 是否启用、是否支持对应业务域。
+
 ## 数据底座
 
 当前本地数据库文件为 `data/fund-radar.sqlite`，属于运行时数据，不提交到 Git。

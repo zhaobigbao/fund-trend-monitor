@@ -665,6 +665,55 @@ button {
   line-height: 1.4;
 }
 
+.source-binding-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.source-binding-row {
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.source-binding-row strong,
+.source-binding-row small {
+  display: block;
+}
+
+.source-binding-row strong {
+  margin-bottom: 3px;
+  color: #263341;
+  font-size: 13px;
+}
+
+.source-binding-row small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.source-binding-row select {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fbfcff;
+  outline: none;
+  font: inherit;
+}
+
+.source-binding-row select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 .stock-tag-editor {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(150px, 1fr));
@@ -905,6 +954,10 @@ button {
 .sync-modal-block-head h4 {
   margin-top: 3px;
   font-size: 18px;
+}
+
+.sync-modal-block-head .sync-button {
+  margin-bottom: 0;
 }
 
 .sync-modal .source-coverage-list {
@@ -1541,7 +1594,10 @@ th:first-child {
   .pool-form,
   .holding-editor-grid,
   .stock-tag-editor,
+  .source-binding-list,
   .source-coverage-list,
+  .sync-modal .source-coverage-list,
+  .sync-modal-grid,
   .report-panel .report-list,
   .grid-two,
   .research-row,

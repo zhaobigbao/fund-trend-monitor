@@ -10,6 +10,7 @@ const state = {
   stockTags: [],
   selectedStockCode: "",
   dataSources: [],
+  sourceCoverage: null,
   searchTimer: null
 };
 
@@ -356,6 +357,9 @@ function renderReports(reports) {
 }
 
 function renderSourceCoverage(coverage) {
+  state.sourceCoverage = coverage;
+  state.dataSources = coverage.sources || [];
+  renderSourceBindings(coverage);
   $("#sourceCoverageRows").innerHTML = coverage.domains
     .map(
       (item) => `
@@ -373,6 +377,32 @@ function renderSourceCoverage(coverage) {
     )
     .join("");
   $("#sourceSyncStatus").textContent = `当前基金 ${coverage.fundName} · 默认板块源 ${coverage.defaults.sectorBoard || "eastmoney"}`;
+}
+
+function renderSourceBindings(coverage) {
+  $("#sourceBindingRows").innerHTML = coverage.domains
+    .map(
+      (domain) => `
+        <label class="source-binding-row">
+          <span>
+            <strong>${domain.label}</strong>
+            <small>${domain.detail}</small>
+          </span>
+          <select data-source-domain="${domain.domain}">
+            ${domain.options
+              .map((source) => {
+                const disabled = !source.enabled || !source.supported;
+                const selected = source.id === domain.sourceId ? "selected" : "";
+                const suffix = source.enabled ? (source.supported ? "" : " · 不支持该模块") : " · 待配置";
+                return `<option value="${source.id}" ${selected} ${disabled ? "disabled" : ""}>${source.name}${suffix}</option>`;
+              })
+              .join("")}
+          </select>
+        </label>
+      `
+    )
+    .join("");
+  $("#sourceBindingStatus").textContent = `当前基金 ${coverage.fundName} · 修改后点击保存来源`;
 }
 
 function sourceStatusText(status) {
@@ -883,6 +913,33 @@ async function syncWatchlistNav() {
   }
 }
 
+async function saveSourceBindings() {
+  if (!state.selectedCode) return;
+  const button = $("#saveSourceBindingsButton");
+  const bindings = Object.fromEntries(
+    [...document.querySelectorAll("[data-source-domain]")].map((select) => [select.dataset.sourceDomain, select.value])
+  );
+  button.disabled = true;
+  button.textContent = "保存中";
+  $("#sourceBindingStatus").textContent = "正在保存当前基金的数据源绑定";
+  try {
+    const coverage = await fetchJson(`/api/funds/${state.selectedCode}/source-bindings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bindings })
+    });
+    await loadFund(state.selectedCode);
+    renderSourceCoverage(coverage);
+    $("#sourceBindingStatus").textContent = "数据源绑定已保存，已接入来源会用于当前基金覆盖状态";
+  } catch (error) {
+    $("#sourceBindingStatus").textContent = "保存失败，请稍后重试";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "保存来源";
+  }
+}
+
 fundList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-code]");
   if (button) loadFund(button.dataset.code);
@@ -910,6 +967,7 @@ $("#syncRealDataButton").addEventListener("click", syncCurrentFundRealData);
 $("#syncWatchlistButton").addEventListener("click", syncWatchlistNav);
 $("#openSyncModalButton").addEventListener("click", openSyncModal);
 $("#closeSyncModalButton").addEventListener("click", closeSyncModal);
+$("#saveSourceBindingsButton").addEventListener("click", saveSourceBindings);
 $("#syncModal").addEventListener("click", (event) => {
   if (event.target === $("#syncModal")) closeSyncModal();
 });
