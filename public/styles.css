@@ -781,6 +781,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
   gap: 18px;
+  align-items: start;
 }
 
 .research-row {
@@ -872,7 +873,7 @@ th:first-child {
 }
 
 .holding-editor textarea {
-  min-height: 116px;
+  min-height: 180px;
   padding: 10px 12px;
   resize: vertical;
 }
