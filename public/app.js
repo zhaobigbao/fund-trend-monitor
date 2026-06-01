@@ -317,6 +317,36 @@ function renderHoldingChanges(changeData) {
     : `<div class="empty-state">暂无季度持仓变化</div>`;
 }
 
+function renderHoldingContributions(data) {
+  const summary = data.summary || {};
+  $("#contributionStatus").textContent = `${summary.matchedCount || 0}/${summary.totalCount || 0} 已匹配`;
+  $("#contributionSummary").textContent = `${data.quoteSource} · ${data.generatedAt} · 净贡献约 ${formatContribution(summary.netContribution || 0)}，正贡献 ${formatContribution(summary.positiveContribution || 0)}，负贡献 ${formatContribution(summary.negativeContribution || 0)}。${data.message}`;
+  $("#contributionRows").innerHTML = data.rows.length
+    ? data.rows
+        .map(
+          (row) => `
+            <article class="contribution-row">
+              <div>
+                <strong>${row.name}</strong>
+                <span>${row.stockCode} · ${row.sector} · ${row.track}</span>
+              </div>
+              <div class="contribution-metrics">
+                <span>权重 ${row.weight.toFixed(2)}%</span>
+                <span class="${row.stockChange >= 0 ? "positive" : "negative"}">${formatPercent(row.stockChange)}</span>
+                <b class="${row.contribution >= 0 ? "positive" : "negative"}">${formatContribution(row.contribution)}</b>
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">${data.message}</div>`;
+}
+
+function formatContribution(value) {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${Number(value || 0).toFixed(2)}点`;
+}
+
 function renderSectors(sectors) {
   if (!sectors.length) {
     $("#sectorBars").innerHTML = `<div class="empty-state">暂无行业暴露数据</div>`;
@@ -633,13 +663,14 @@ async function loadFund(code = state.selectedCode) {
   $("#chartStatus").textContent = "同步中";
 
   const fund = state.funds.find((item) => item.code === code) || (await fetchJson(`/api/funds?q=${encodeURIComponent(code)}`))[0];
-  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, stockTags, sectors, reports, insight, alerts, sourceCoverage, sectorRadar] = await Promise.all([
+  const [trend, syncStatus, realtime, holdings, peers, holdingChanges, holdingContributions, stockTags, sectors, reports, insight, alerts, sourceCoverage, sectorRadar] = await Promise.all([
     fetchJson(`/api/funds/${code}/trend?range=${state.range}`),
     fetchJson(`/api/funds/${code}/sync-status`),
     fetchJson(`/api/funds/${code}/realtime`),
     fetchJson(`/api/funds/${code}/holdings`),
     fetchJson(`/api/funds/${code}/peers`),
     fetchJson(`/api/funds/${code}/holding-changes`),
+    fetchJson(`/api/funds/${code}/holding-contributions`),
     fetchJson(`/api/funds/${code}/stock-tags`),
     fetchJson(`/api/funds/${code}/sectors`),
     fetchJson(`/api/funds/${code}/reports`),
@@ -656,6 +687,7 @@ async function loadFund(code = state.selectedCode) {
   renderHoldings(holdings);
   renderPeers(peers);
   renderHoldingChanges(holdingChanges);
+  renderHoldingContributions(holdingContributions);
   renderStockTags(stockTags);
   renderSourceCoverage(sourceCoverage);
   renderSectors(sectors);

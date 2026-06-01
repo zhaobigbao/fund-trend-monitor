@@ -117,6 +117,31 @@ export async function fetchBoardConstituents(boardCode) {
   }));
 }
 
+export async function fetchStockQuotes(stockCodes) {
+  const secids = [...new Set(stockCodes.map(stockSecid).filter(Boolean))];
+  if (!secids.length) return [];
+  const url = new URL("https://push2.eastmoney.com/api/qt/ulist.np/get");
+  setSearchParams(url, {
+    fltt: "2",
+    invt: "2",
+    secids: secids.join(","),
+    fields: "f12,f14,f2,f3,f4,f6,f17,f18"
+  });
+
+  const payload = await fetchJson(url, { Referer: "https://quote.eastmoney.com/" });
+  return (payload.data?.diff || []).map((item) => ({
+    stockCode: normalizeStockCode(item.f12),
+    stockName: item.f14,
+    latestPrice: numberOrNull(item.f2),
+    changePercent: numberOrNull(item.f3),
+    changeValue: numberOrNull(item.f4),
+    open: numberOrNull(item.f17),
+    previousClose: numberOrNull(item.f18),
+    amount: numberOrNull(item.f6),
+    source: SOURCE_NAME
+  }));
+}
+
 export async function fetchBoardIntraday(boardCode) {
   const url = new URL("https://push2his.eastmoney.com/api/qt/stock/trends2/get");
   setSearchParams(url, {
@@ -224,6 +249,20 @@ function inferHoldingTags(stockCode, name) {
 
 function setSearchParams(url, params) {
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+}
+
+function stockSecid(stockCode) {
+  const code = normalizeStockCode(stockCode);
+  if (/^\d{5}$/.test(code)) return `116.${code}`;
+  if (/^(6|9)/.test(code)) return `1.${code}`;
+  if (/^(0|2|3)/.test(code)) return `0.${code}`;
+  return "";
+}
+
+function normalizeStockCode(value) {
+  const code = String(value || "").trim();
+  if (/^\d{4}$/.test(code)) return code.padStart(5, "0");
+  return code;
 }
 
 function decodeEscapedHtml(value) {

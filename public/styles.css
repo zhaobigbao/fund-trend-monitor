@@ -1591,6 +1591,53 @@ th:first-child {
   font-size: 14px;
 }
 
+.contribution-panel .section-head {
+  align-items: center;
+}
+
+.contribution-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contribution-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.contribution-row strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.contribution-row span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.contribution-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 10px;
+  align-items: center;
+  justify-content: end;
+  text-align: right;
+}
+
+.contribution-metrics b {
+  min-width: 64px;
+  font-size: 16px;
+}
+
 @media (max-width: 980px) {
   .shell {
     grid-template-columns: 1fr;
@@ -1616,6 +1663,7 @@ th:first-child {
   .source-coverage-list,
   .sync-modal .source-coverage-list,
   .sync-modal-grid,
+  .contribution-list,
   .report-panel .report-list,
   .grid-two,
   .research-row,
@@ -1692,6 +1740,7 @@ th:first-child {
 
   .peer-row,
   .change-row,
+  .contribution-row,
   .stock-tag-row,
   .sync-run,
   .insight-item,
@@ -1701,6 +1750,7 @@ th:first-child {
 
   .peer-metrics,
   .change-weight,
+  .contribution-metrics,
   .stock-tag-row > div:last-child,
   .sync-run > div:last-child,
   .insight-item span,

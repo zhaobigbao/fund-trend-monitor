@@ -183,6 +183,7 @@ API 应围绕业务资源拆分：
 - `/api/funds/:code/profile`
 - `/api/funds/:code/trend`
 - `/api/funds/:code/holdings`
+- `/api/funds/:code/holding-contributions`
 - `/api/funds/:code/holding-changes`
 - `/api/funds/:code/stock-tags`
 - `/api/funds/:code/sectors`
@@ -225,6 +226,7 @@ API 应围绕业务资源拆分：
 - `src/services/fundAnalytics.mjs`：分析服务层，负责走势、持仓、持仓变化、同类基金对比、板块暴露、研报聚合、AI 结论和预警规则。
 - `src/services/dataSourceService.mjs`：数据源管理服务，负责数据源列表、默认源、基金级绑定和来源覆盖状态。
 - `src/services/sectorRadarService.mjs`：板块实时雷达服务，负责按基金持仓映射行业/概念板块、同步真实持仓和板块实时走势。
+- `src/services/holdingContributionService.mjs`：持仓贡献归因服务，负责拉取或回退重仓股行情，并按披露持仓权重估算今日净值贡献。
 - `src/services/fundImportService.mjs`：基金导入服务，负责外部搜索结果入库和初始净值同步。
 - `src/services/fundHoldingService.mjs`：持仓管理服务，负责本地季度持仓补录、校验和任务记录。
 - `src/services/fundPoolService.mjs`：基金池管理服务，负责本地分组、标签、备注和基金移除。
@@ -251,6 +253,8 @@ API 应围绕业务资源拆分：
 板块实时雷达的候选板块由服务层根据持仓行业、赛道、别名关键词和持仓权重统一打分。前端只展示服务层返回的命中关键词、持仓交集权重、板块涨跌和分钟走势，不在浏览器侧重新排序或推导。
 
 当外部实时板块源不可用时，`sectorRadarService` 应优先读取 `sector_realtime_quotes`、`sector_constituents`、`sector_intraday_points` 的最近缓存，页面需明确提示“实时源暂不可用，展示缓存”，不能直接让雷达空白。
+
+重仓股实时贡献通过服务层统一计算：优先读取个股实时行情，失败时允许使用板块成份股缓存中的个股涨跌回退。贡献值是基于披露持仓权重和当前股票涨跌的近似归因，页面必须标明行情来源和匹配数量，不得把它表达为精确净值。
 
 ## 数据底座
 

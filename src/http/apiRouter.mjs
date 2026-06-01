@@ -16,6 +16,7 @@ import {
 } from "../services/fundAnalytics.mjs";
 import { importExternalFund, listRecentSyncRuns, searchExternalFunds, syncFundNav, syncWatchlistNav } from "../services/fundImportService.mjs";
 import { updateFundHoldings } from "../services/fundHoldingService.mjs";
+import { buildHoldingContributions } from "../services/holdingContributionService.mjs";
 import { removeFundFromPool, updateFundProfile } from "../services/fundPoolService.mjs";
 import { listFundStockTags, listStocks, updateStockTag } from "../services/stockTagService.mjs";
 import { buildSourceCoverage, listDataSources, testDataSource, updateDataSourceDefaults, updateFundSourceBindings } from "../services/dataSourceService.mjs";
@@ -125,6 +126,7 @@ export function createApiRouter() {
       if (req.method !== "GET") return notFound(res);
       if (resource === "trend") return json(res, buildTrend(code, url.searchParams.get("range") || "1m"));
       if (resource === "holdings") return json(res, buildHoldings(code));
+      if (resource === "holding-contributions") return json(res, await buildHoldingContributions(code));
       if (resource === "holding-changes") return json(res, buildHoldingChanges(code));
       if (resource === "stock-tags") return json(res, listFundStockTags(code));
       if (resource === "sectors") return json(res, buildSectorExposure(code));

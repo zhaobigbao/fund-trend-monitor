@@ -766,6 +766,27 @@ export function listSectorIntradayPointRecords(sourceId, sectorCodes, period = "
     .all(sourceId, period, ...sectorCodes);
 }
 
+export function listCachedStockQuoteRecords(sourceId, stockCodes) {
+  if (!stockCodes.length) return [];
+  const placeholders = stockCodes.map(() => "?").join(",");
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        source_id AS sourceId,
+        stock_code AS stockCode,
+        stock_name AS stockName,
+        latest_price AS latestPrice,
+        change_percent AS changePercent,
+        updated_at AS updatedAt
+      FROM sector_constituents
+      WHERE source_id = ? AND stock_code IN (${placeholders})
+      ORDER BY updated_at DESC, sector_code
+    `
+    )
+    .all(sourceId, ...stockCodes);
+}
+
 export function saveAiInsightRecord(code, insight) {
   const latest = getLatestAiInsightRecord(code);
   if (latest?.signature === insight.signature) return latest;
